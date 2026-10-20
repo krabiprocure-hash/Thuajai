@@ -1,0 +1,1418 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1f5c4a">
+<meta name="author" content="Miss Narama Woraklan">
+<meta name="description" content="คำนวณถัวจ่ายงานก่อสร้าง ตรวจความถูกต้อง และพิมพ์บัญชีสรุปและรายละเอียดรายการเพิ่ม/ลด">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ถัวจ่าย">
+<script>try{if(localStorage.getItem('thuajai-activation')!=='ecf15cdf904ee62e3db43b0ffc8cedf0a411bb699bd8cfaea97548dfe851297b')document.documentElement.classList.add('locked')}catch(e){document.documentElement.classList.add('locked')}</script>
+<style>html{-webkit-text-size-adjust:100%}body{margin:0}[hidden]{display:none!important}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
+</head>
+<body>
+<title>ระบบคำนวณถัวจ่าย</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@500;600;700&family=Sarabun:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one working column — contract header, rules, wide item table, then summary + checks side by side; alert panel pinned near top */
+:root{
+  --bg:#f3f4f1; --surface:#ffffff; --sunk:#eceee9; --line:#d6d9d2; --fg:#1c211f; --muted:#5d6560;
+  --accent:#1f5c4a; --accent-soft:#dcebe5; --mark:#e2b007;
+  --err:#b42318; --err-bg:#fdecea; --warn:#9a5b00; --warn-bg:#fff4dc; --ok:#1e7a46; --ok-bg:#e3f4ea; --info:#2f5f8a; --info-bg:#e6eef7;
+  --display:"Bai Jamjuree","Sarabun",system-ui,sans-serif; --body:"Sarabun",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141816; --surface:#1c211f; --sunk:#232a27; --line:#343c38; --fg:#e7ebe8; --muted:#9ba59f;
+  --accent:#7cc4a8; --accent-soft:#1f3a31; --mark:#f0c53a;
+  --err:#ff8a80; --err-bg:#3a1d1b; --warn:#f2b55a; --warn-bg:#3a2c14; --ok:#7fd3a0; --ok-bg:#183326; --info:#8fbbe6; --info-bg:#1a2a3a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141816; --surface:#1c211f; --sunk:#232a27; --line:#343c38; --fg:#e7ebe8; --muted:#9ba59f;
+  --accent:#7cc4a8; --accent-soft:#1f3a31; --mark:#f0c53a;
+  --err:#ff8a80; --err-bg:#3a1d1b; --warn:#f2b55a; --warn-bg:#3a2c14; --ok:#7fd3a0; --ok-bg:#183326; --info:#8fbbe6; --info-bg:#1a2a3a; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 60px}
+.wrap{max-width:1400px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.25}
+h1{font-size:1.6rem}
+h2{font-size:1.1rem;display:flex;align-items:center;gap:10px}
+h2 .n{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:6px;background:var(--accent);color:var(--surface);font-size:.85rem}
+.top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px;border-bottom:3px solid var(--fg);padding-bottom:12px;position:relative}
+.top::after{content:"";position:absolute;left:0;right:0;bottom:-9px;height:3px;background:repeating-linear-gradient(90deg,var(--mark) 0 28px,transparent 28px 44px)}
+.sub{color:var(--muted);font-size:.9rem}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+button{font:inherit;font-size:.9rem;border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:7px 12px;border-radius:7px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--surface);font-weight:600}
+button.danger{color:var(--err)}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.grid .wide{grid-column:1/-1}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:.82rem;color:var(--muted);min-width:0}
+label.f .hint{font-size:.78rem}
+input,textarea{font:inherit;font-size:.95rem;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px;width:100%;min-width:0}
+textarea{resize:vertical;min-height:54px}
+input.num{text-align:right;font-variant-numeric:tabular-nums}
+input.bad{border-color:var(--err);background:var(--err-bg)}
+.calc{font-variant-numeric:tabular-nums;font-weight:600;color:var(--fg);padding:6px 8px;background:var(--sunk);border-radius:6px;border:1px dashed var(--line)}
+
+/* alerts */
+.alerts{border-radius:10px;border:1px solid var(--line);background:var(--surface);overflow:hidden}
+.alerts-head{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line)}
+.status{font-family:var(--display);font-weight:700;font-size:1.05rem;display:flex;align-items:center;gap:10px}
+.dot{width:12px;height:12px;border-radius:50%}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:.8rem;padding:2px 10px;border-radius:99px;font-weight:600;border:1px solid transparent;cursor:pointer;background:none}
+.chip.e{background:var(--err-bg);color:var(--err)} .chip.w{background:var(--warn-bg);color:var(--warn)} .chip.i{background:var(--info-bg);color:var(--info)}
+.chip[aria-pressed="false"]{opacity:.45}
+.alist{list-style:none;margin:0;padding:0;max-height:300px;overflow:auto}
+.alist li{display:grid;grid-template-columns:86px 1fr;gap:10px;padding:9px 16px;border-top:1px solid var(--line);font-size:.92rem}
+.alist li:first-child{border-top:0}
+.alist .lv{font-size:.75rem;font-weight:700;border-radius:5px;padding:2px 6px;align-self:start;text-align:center}
+.lv.e{background:var(--err-bg);color:var(--err)} .lv.w{background:var(--warn-bg);color:var(--warn)} .lv.i{background:var(--info-bg);color:var(--info)}
+.alist .where{font-weight:600}
+.alist .fix{color:var(--muted);font-size:.85rem}
+.alist a{color:var(--accent)}
+.allok{padding:14px 16px;color:var(--ok);background:var(--ok-bg);font-weight:600}
+
+/* table */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;min-width:1500px;font-size:.88rem;font-variant-numeric:tabular-nums}
+th,td{border-bottom:1px solid var(--line);padding:4px 6px;vertical-align:middle}
+thead th{background:var(--sunk);font-weight:600;font-size:.78rem;color:var(--muted);text-align:center;position:sticky;top:0;line-height:1.3}
+thead tr.grp th{color:var(--fg);font-size:.8rem}
+td.r{text-align:right;white-space:nowrap}
+td.c{text-align:center}
+td input{padding:4px 6px;font-size:.88rem;background:transparent;border-color:transparent}
+td input:hover{border-color:var(--line)}
+td input:focus{background:var(--bg);border-color:var(--accent)}
+td input.bad{border-color:var(--err)}
+tr.sev-e td:first-child{box-shadow:inset 4px 0 0 var(--err)}
+tr.sev-w td:first-child{box-shadow:inset 4px 0 0 var(--warn)}
+tr.sev-i td:first-child{box-shadow:inset 4px 0 0 var(--info)}
+tr.flash{animation:fl 1.4s}
+@keyframes fl{0%,40%{background:var(--warn-bg)}100%{background:transparent}}
+@media (prefers-reduced-motion:reduce){tr.flash{animation:none;background:var(--warn-bg)}}
+.tag{display:inline-block;font-size:.72rem;font-weight:700;padding:1px 7px;border-radius:4px;white-space:nowrap}
+.tag.over2{background:var(--err-bg);color:var(--err)} .tag.over1{background:var(--warn-bg);color:var(--warn)}
+.tag.under{background:var(--info-bg);color:var(--info)} .tag.new{background:var(--accent-soft);color:var(--accent)} .tag.cancel{background:var(--sunk);color:var(--muted);border:1px solid var(--line)}
+.plus{color:var(--ok)} .minus{color:var(--err)}
+.dim{color:var(--muted)}
+tfoot td{font-weight:700;background:var(--sunk)}
+.x{border:0;background:none;color:var(--muted);padding:2px 6px;font-size:1rem}
+.x:hover{color:var(--err)}
+
+/* summary */
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
+@media (max-width:900px){.two{grid-template-columns:1fr}}
+.sum{display:flex;flex-direction:column}
+.sum .row{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:9px 0;border-bottom:1px solid var(--line)}
+.sum .row:last-child{border-bottom:0}
+.sum .k{color:var(--muted)}
+.sum .v{font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+.sum .w{grid-column:1/-1;font-size:.86rem;color:var(--muted)}
+.sum .big .v{font-size:1.35rem;color:var(--accent);font-family:var(--display)}
+.cmp{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) auto;gap:8px 10px;align-items:center}
+.cmp .h{font-size:.78rem;color:var(--muted);font-weight:600}
+.cmp .lbl{font-size:.88rem}
+.cmp .res{font-size:.8rem;font-weight:700;white-space:nowrap}
+.res.ok{color:var(--ok)} .res.e{color:var(--err)} .res.n{color:var(--muted)}
+.note{font-size:.84rem;color:var(--muted)}
+.check{display:flex;gap:8px;align-items:flex-start;font-size:.9rem}
+.check input{width:auto;margin-top:5px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:8px;font-size:.9rem;z-index:20}
+#io{min-height:120px;font-family:ui-monospace,monospace;font-size:.8rem}
+
+/* tabs */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line)}
+.projv{display:flex;flex-direction:column;gap:18px}
+.ttl{display:flex;flex-direction:column;gap:2px;min-width:0}
+.crumb{align-self:flex-start;border:0;background:none;color:var(--accent);padding:0;font-weight:600;margin-bottom:4px}
+.crumb:hover{text-decoration:underline}
+.home{display:flex;flex-direction:column;gap:16px}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:860px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:440px){.kpis{grid-template-columns:1fr}}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:2px}
+.kpi .k{font-size:.85rem;color:var(--muted)}
+.kpi .v{font-family:var(--display);font-size:1.45rem;font-weight:700;font-variant-numeric:tabular-nums}
+.kpi .s{font-size:.8rem;color:var(--muted)}
+.kpi.alert .v{color:var(--err)}
+.kpi-note{grid-column:1/-1;font-size:.8rem;color:var(--muted);margin-top:-4px}
+.ptbl td:first-child,.ptbl td:nth-child(7),.ptbl td:nth-child(9){white-space:nowrap}
+.htools{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center}
+.htools input[type=search]{max-width:380px;flex:1 1 240px;background:var(--surface)}
+.filebtn{font-size:.9rem;border:1px solid var(--line);background:var(--surface);padding:7px 12px;border-radius:7px;cursor:pointer;position:relative;overflow:hidden}
+.filebtn:hover{border-color:var(--accent)}
+.filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer}
+table.ptbl{min-width:980px;background:var(--surface);font-size:.9rem}
+.ptbl th{background:var(--sunk);font-weight:600;font-size:.8rem;color:var(--muted);text-align:left;padding:8px 10px;position:static}
+.ptbl td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.ptbl tr.prow{cursor:pointer}
+.ptbl tr.prow:hover td{background:var(--accent-soft)}
+.ptbl .nm{font-weight:600}
+.ptbl .sm{font-size:.8rem;color:var(--muted)}
+.ptbl .r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ptbl .acts{display:flex;gap:6px;justify-content:flex-end;flex-wrap:nowrap}
+.ptbl .acts button{padding:4px 9px;font-size:.82rem;white-space:nowrap}
+.pill{display:inline-block;font-size:.75rem;font-weight:700;padding:2px 9px;border-radius:99px;white-space:nowrap}
+.pill.e{background:var(--err-bg);color:var(--err)}.pill.w{background:var(--warn-bg);color:var(--warn)}.pill.ok{background:var(--ok-bg);color:var(--ok)}.pill.n{background:var(--sunk);color:var(--muted)}
+.rnd{display:inline-grid;place-items:center;min-width:26px;height:22px;padding:0 6px;border-radius:6px;background:var(--accent-soft);color:var(--accent);font-weight:700;font-size:.8rem}
+.credit{margin-top:20px;padding:12px 0 4px;border-top:1px solid var(--line);text-align:center;font-size:.72rem;color:var(--muted);letter-spacing:.02em}
+
+/* home hero header */
+.eyebrow{font-size:.78rem;text-transform:uppercase;letter-spacing:.22em;font-weight:600;color:var(--accent)}
+.top.hero{--hg:#103b30;--hy:#f2c230;background:var(--hg);color:#f4f7f5;border:0;border-radius:16px;padding:34px clamp(18px,4vw,44px) 46px;overflow:hidden;isolation:isolate}
+.top.hero::before{content:"";position:absolute;inset:0;z-index:-1;opacity:.5;background-image:radial-gradient(rgba(255,255,255,.07) 1px,transparent 1.2px);background-size:7px 7px}
+.top.hero::after{left:0;right:0;bottom:16px;height:8px;background:repeating-linear-gradient(90deg,var(--hy) 0 46px,transparent 46px 74px);animation:road 2.4s linear 1}
+.top.hero h1{font-size:clamp(2rem,5vw,3.2rem);letter-spacing:.005em;color:#fff}
+.top.hero .eyebrow{color:var(--hy);margin-top:2px}
+.top.hero .sub{color:#c9dbd4;font-size:.98rem;margin-top:6px}
+.top.hero .btns button.primary{background:var(--hy);border-color:var(--hy);color:#103b30}
+@media (prefers-reduced-motion:reduce){.cr-road,.top.hero::after{animation:none}}
+.empty{padding:28px;text-align:center;color:var(--muted);background:var(--surface);border:1px dashed var(--line);border-radius:10px}
+.tab{border:1px solid transparent;border-bottom:0;border-radius:8px 8px 0 0;background:none;padding:9px 18px;font-family:var(--display);font-weight:600;color:var(--muted);margin-bottom:-1px}
+.tab[aria-selected="true"]{background:var(--surface);border-color:var(--line);color:var(--fg)}
+.doc-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.doc-pick{display:flex;flex-wrap:wrap;gap:6px}
+.doc-pick button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+.sig-tbl{width:100%;min-width:0;border-collapse:collapse}
+.sig-tbl td{padding:3px 4px;border:0}
+.sig-tbl input{background:var(--bg)}
+
+/* paper — deliberately always white, like the printed form */
+.desk{overflow-x:auto;background:var(--sunk);border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:20px;align-items:flex-start}
+.paper{--ink:#000;--pline:#000;--hi:#ffff00;--blue:#1a35c9;background:#fff;color:#000;box-shadow:0 1px 4px rgba(0,0,0,.25);
+  font-family:"Sarabun","TH SarabunPSK",sans-serif;font-size:11px;line-height:1.35;padding:28px 34px;flex:none;margin-inline:0}
+.paper.land{width:max-content;min-width:1400px}
+.paper.port{width:830px;font-size:13px}
+.paper b{font-weight:700}
+.p-head{display:grid;grid-template-columns:1fr 1.25fr 1fr;gap:12px;font-weight:700;margin-bottom:10px;font-size:11.5px}
+.p-head .mid{text-align:center}
+.p-head .kv{display:grid;grid-template-columns:auto 1fr auto;gap:0 8px}
+.p-head .kv .n{text-align:right;font-variant-numeric:tabular-nums}
+table.st{border-collapse:collapse;width:max-content;min-width:0;font-size:10px;font-variant-numeric:tabular-nums;color:#000}
+table.st th,table.st td{border:var(--bw,.5px) solid #000;padding:1px 3px;line-height:1.25}
+table.st th{font-weight:700;text-align:center;background:#fff;color:#000;position:static;font-size:10px}
+table.st td.r{text-align:right}
+table.st td.c{text-align:center}
+table.st td.desc{white-space:normal;max-width:300px}
+table.st tr.tot td{font-weight:700}
+table.st .hi{background:var(--hi)}
+table.st td.rm{font-size:9px}
+.p-sum{display:grid;grid-template-columns:1.2fr 1fr;gap:10px 40px;margin-top:10px;font-weight:700}
+.p-sum .l{display:grid;grid-template-columns:auto auto auto 1fr;gap:3px 8px;align-items:baseline}
+.p-sum .l .n,.p-sum .rr .n{text-align:right;font-variant-numeric:tabular-nums}
+.p-sum .l .w{font-weight:400}
+.p-sum .rr{display:grid;grid-template-columns:1fr auto auto auto;gap:3px 10px;border:var(--bw,.5px) solid #000;padding:4px 8px;align-self:start}
+.p-remark{margin-top:14px}
+.p-remark u{font-weight:700}
+.signs{display:grid;grid-template-columns:repeat(4,1fr);gap:46px 20px;margin-top:40px;text-align:center}
+.signs .s{display:flex;flex-direction:column;gap:2px}
+.signs.one{grid-template-columns:1fr;justify-items:end;margin-top:50px}
+.signs.one .s{width:360px}
+.d-title{text-align:center;font-weight:700;line-height:1.6;margin-bottom:16px}
+.d-sec{font-weight:700;margin:6px 0 12px}
+.d-item{margin-bottom:14px}
+.d-item .hd{font-weight:700;display:grid;grid-template-columns:1.85em 7em 1fr}
+.d-item .hd span:nth-child(2){white-space:nowrap}
+.d-row{display:grid;grid-template-columns:1.85em 15.6em 5.6em 3.9em 6.4em 6.4em 3.3em 4.1em minmax(7.4em,1fr) 2.2em;align-items:baseline;white-space:nowrap}
+.d-row .lbl{grid-column:2/9;text-align:right;padding-right:10px}
+.d-row .n{text-align:right;font-variant-numeric:tabular-nums;padding-right:6px}
+.d-row.t{font-weight:700}
+.d-row.t .n{border-bottom:var(--bw,.5px) solid #000}
+.d-row.t2 .n{border-bottom:3px double #000;color:var(--blue)}
+.d-foot{margin-top:24px;text-align:center;font-weight:700;line-height:1.8}
+.d-foot .reason{text-align:left;font-weight:400;margin-bottom:12px}
+.doc-err{outline:2px dashed #d33;outline-offset:1px}
+select{font:inherit;font-size:.92rem;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px;min-width:0}
+.psetup{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px;background:var(--sunk);border-radius:10px;padding:14px}
+.pgrp{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-content:start;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.pgrp .pl{grid-column:1/-1;font-family:var(--display);font-weight:600;font-size:.88rem}
+.pgrp .check{grid-column:1/-1}
+.pwho{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.pwho .pl{font-family:var(--display);font-weight:600;font-size:.88rem}
+.seg{display:flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;border-radius:0;border-right:1px solid var(--line);padding:7px 14px}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--surface);font-weight:600}
+.whoinfo{font-size:.84rem;color:var(--muted)}
+.pfoot{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.pinfo{font-weight:600;color:var(--accent)}
+#measure{position:absolute;left:-200000px;top:0;visibility:hidden;pointer-events:none}
+.desk{display:block}
+.sheets{display:flex;flex-direction:column;gap:22px;align-items:center;width:max-content;margin:0 auto}
+.sheet{background:#fff;color:#000;box-shadow:0 2px 8px rgba(0,0,0,.28);overflow:hidden;position:relative;box-sizing:border-box;flex:none}
+.sheetc{padding:0!important;box-shadow:none!important;margin:0 auto!important;min-width:0!important}
+.paper.port.sheetc{margin:0!important}
+.sheet .over{position:absolute;right:6px;top:6px;background:#b42318;color:#fff;font:600 12px Sarabun,sans-serif;padding:2px 8px;border-radius:4px}
+.sheet .pno{position:absolute;right:8px;bottom:4px;font:11px Sarabun,sans-serif;color:#999}
+.nohi .hi,.nohi [style*="--hi"]{background:none!important}
+.blk{display:flow-root}
+@media (max-width:520px){.alist li{grid-template-columns:1fr}.cmp{grid-template-columns:1fr}.cmp .h{display:none}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="ttl">
+      <button type="button" id="bHome" class="crumb" hidden>← หน้าสรุปโครงการ</button>
+      <h1 id="hTitle">ระบบคำนวณถัวจ่าย</h1>
+      <div class="eyebrow home-only">Construction Pay Balancing System</div>
+      <div class="sub" id="hSub">บัญชีสรุปปริมาณงานและค่างานก่อสร้าง · คำนวณ ตรวจความถูกต้อง และพิมพ์เอกสารถัวจ่าย</div>
+    </div>
+    <div class="btns proj-only" hidden>
+      <button type="button" id="bXlsx" class="primary">บันทึกเป็น Excel (มีสูตร)</button>
+      <button type="button" id="bCopy">คัดลอกตารางไปวางใน Excel</button>
+      <button type="button" id="bIO">บันทึก / เปิดข้อมูล</button>
+    </div>
+    <div class="btns home-only">
+      <button type="button" id="bInstall" class="primary" hidden>ติดตั้งโปรแกรมลงเครื่อง</button>
+    </div>
+  </header>
+
+  <section id="homeView" class="home">
+    <div class="kpis" id="kpis"></div>
+    <div class="htools">
+      <input id="hSearch" type="search" placeholder="ค้นหา สัญญาเลขที่ ชื่องาน ผู้รับจ้าง">
+      <div class="btns">
+        <button type="button" id="bNew" class="primary">+ เพิ่มโครงการ</button>
+        <button type="button" id="bSample">+ โครงการตัวอย่าง</button>
+        <button type="button" id="bBackup">สำรองข้อมูลทั้งหมด</button>
+        <label class="filebtn">นำเข้าข้อมูล<input type="file" id="hImport" accept=".json,.txt"></label>
+      </div>
+    </div>
+    <div class="tbl-wrap"><table class="ptbl" id="ptbl"></table></div>
+    <div class="note" id="homeNote"></div>
+  </section>
+
+  <div id="projView" class="projv" hidden>
+
+  <section class="panel" id="ioPanel" hidden>
+    <h2>บันทึก / เปิดข้อมูล</h2>
+    <div class="note">ระบบบันทึกอัตโนมัติไว้ในเครื่องนี้ ถ้าจะย้ายโครงการนี้ไปเครื่องอื่น ให้กด "บันทึกเป็นไฟล์" (หรือ "คัดลอกข้อมูล" แล้ววางเก็บในไฟล์ .txt) แล้วนำไฟล์ไป "นำเข้าข้อมูล" ที่หน้าสรุปโครงการของเครื่องนั้น · การวางข้อความหรือเลือกไฟล์ในช่องนี้จะ<b>แทนที่</b>ข้อมูลของโครงการที่เปิดอยู่</div>
+    <textarea id="io" placeholder="วางข้อมูลที่บันทึกไว้ที่นี่"></textarea>
+    <div class="btns">
+      <button type="button" id="bSaveFile">บันทึกเป็นไฟล์</button>
+      <button type="button" id="bExport">คัดลอกข้อมูล</button>
+      <button type="button" id="bImport" class="primary">เปิดจากข้อความ</button>
+      <label class="f" style="flex-direction:row;align-items:center;gap:8px">หรือเลือกไฟล์ <input type="file" id="fileIn" accept=".txt,.json" style="width:auto"></label>
+    </div>
+  </section>
+
+  <section class="alerts" id="alerts" aria-live="polite"></section>
+
+  <div class="tabs" role="tablist">
+    <button type="button" class="tab" role="tab" id="tabCalc" aria-selected="true">คำนวณ / แก้ไขข้อมูล</button>
+    <button type="button" class="tab" role="tab" id="tabDoc" aria-selected="false">หน้าเอกสาร</button>
+  </div>
+
+  <section class="panel" id="docView" hidden>
+    <div class="doc-bar">
+      <div class="doc-pick" id="docPick">
+        <button type="button" data-page="all" aria-pressed="true">ทั้งหมด</button>
+        <button type="button" data-page="summary" aria-pressed="false">บัญชีสรุป</button>
+        <button type="button" data-page="inc" aria-pressed="false">รายละเอียดรายการเพิ่ม</button>
+        <button type="button" data-page="dec" aria-pressed="false">รายละเอียดรายการลด</button>
+      </div>
+      <div class="btns">
+        <button type="button" id="bPrint" class="primary">🖨 พิมพ์ / บันทึกเป็น PDF</button>
+        <button type="button" id="bCopyDoc">คัดลอกไปวางใน Word / Excel</button>
+      </div>
+    </div>
+    <div class="psetup">
+      <div class="pwho"><span class="pl">ตั้งค่าหน้ากระดาษของ</span>
+        <div class="seg" id="psWho" role="tablist">
+          <button type="button" data-who="sum" aria-pressed="true">บัญชีสรุป</button>
+          <button type="button" data-who="inc" aria-pressed="false">รายละเอียดรายการเพิ่ม</button>
+          <button type="button" data-who="dec" aria-pressed="false">รายละเอียดรายการลด</button>
+        </div>
+        <span class="whoinfo" id="psWhoInfo"></span>
+      </div>
+      <div class="pgrp"><span class="pl">กระดาษ</span>
+        <label class="f">ขนาด<select id="ps_paper"><option value="A4">A4 (210×297 มม.)</option><option value="F4">F4 / ฟุลสแก๊ป (215×330 มม.)</option><option value="A3">A3 (297×420 มม.)</option><option value="Letter">Letter</option><option value="Legal">Legal</option></select></label>
+        <label class="f">แนวกระดาษ<select id="ps_o"><option value="L">แนวนอน</option><option value="P">แนวตั้ง</option></select></label>
+      </div>
+      <div class="pgrp"><span class="pl">ขอบกระดาษ (มม.)</span>
+        <label class="f">บน<input id="ps_mt" class="num" inputmode="decimal"></label>
+        <label class="f">ล่าง<input id="ps_mb" class="num" inputmode="decimal"></label>
+        <label class="f">ซ้าย<input id="ps_ml" class="num" inputmode="decimal"></label>
+        <label class="f">ขวา<input id="ps_mr" class="num" inputmode="decimal"></label>
+      </div>
+      <div class="pgrp"><span class="pl">ขนาดเนื้อหาและเส้น</span>
+        <label class="f" id="lbScale">ขนาดเนื้อหา<select id="ps_scale"><option value="fit">ย่อให้พอดี 1 หน้า</option><option value="fitw">พอดีความกว้าง</option><option value="100">100%</option><option value="90">90%</option><option value="80">80%</option><option value="75">75%</option><option value="70">70%</option><option value="65">65%</option><option value="60">60%</option></select></label>
+        <label class="f" id="lbFont">ขนาดตัวอักษร<select id="ps_font"><option value="12">เล็ก (12)</option><option value="13">13</option><option value="14">กลาง (14)</option><option value="15">15</option><option value="16">ใหญ่ (16)</option></select></label>
+        <label class="f">เส้นตาราง<select id="ps_bw"><option value="0.3">บางมาก</option><option value="0.5">บาง</option><option value="0.75">กลาง</option><option value="1">หนา</option></select></label>
+        <label class="check" id="lbRep"><input type="checkbox" id="ps_rep"> พิมพ์หัวเรื่องซ้ำทุกหน้า</label>
+        <label class="check"><input type="checkbox" id="ps_hi"> พิมพ์แถบสีเหลือง</label>
+      </div>
+      <div class="pfoot"><span id="pinfo" class="pinfo"></span>
+        <div class="btns">
+          <label class="f" style="flex-direction:row;align-items:center;gap:6px">ย่อ/ขยายตัวอย่าง<select id="ps_view" style="width:auto"><option value="fit">พอดีจอ</option><option value="50">50%</option><option value="75">75%</option><option value="100">100%</option></select></label>
+          <button type="button" id="bPAll">ใช้ค่านี้กับทุกเอกสาร</button>
+          <button type="button" id="bPReset">คืนค่าเริ่มต้นของเอกสารนี้</button>
+        </div></div>
+    </div>
+    <div class="note">ตัวอย่างด้านล่างคือหน้ากระดาษจริง พิมพ์ออกมาจะเหมือนที่เห็น · ตัวเลขดึงจากแท็บ "คำนวณ / แก้ไขข้อมูล" ชื่อผู้ลงนามแก้ได้ในหัวข้อ 6</div>
+    <div class="desk" id="desk"></div>
+    <div id="measure" aria-hidden="true"></div>
+  </section>
+
+  <section class="panel calc-only">
+    <h2><span class="n">1</span>ข้อมูลสัญญา</h2>
+    <div class="grid">
+      <label class="f">สัญญาเลขที่<input id="h_no"></label>
+      <label class="f">ลงวันที่ (พ.ศ.)<input id="h_date"></label>
+      <label class="f">ถัวจ่ายครั้งที่<input id="h_round" class="num"></label>
+      <label class="f">ผู้รับจ้าง<input id="h_contractor"></label>
+      <label class="f wide">ชื่องาน<input id="h_project"></label>
+      <label class="f wide">สถานที่ / ทางหลวง<input id="h_loc"></label>
+      <label class="f">ค่าก่อสร้างตามสัญญา (บาท)<input id="h_value" class="num" inputmode="decimal"><span class="hint">ตามที่ระบุในสัญญา ใช้เทียบกับผลรวมรายการ</span></label>
+      <label class="f">วันเริ่มต้นสัญญา<input id="h_start" type="date"><span class="hint" id="h_start_th"></span></label>
+      <label class="f">วันสิ้นสุดสัญญา<input id="h_end" type="date"><span class="hint" id="h_end_th"></span></label>
+      <label class="f">เวลาทำการตามสัญญา (วัน)<input id="h_days" class="num" inputmode="numeric"><span class="hint" id="h_days_calc"></span></label>
+      <label class="f">อัตราค่าปรับ (% ของค่างานต่อวัน)<input id="h_penrate" class="num" inputmode="decimal"><span class="hint" id="h_pen_calc"></span></label>
+      <label class="f">ค่าปรับวันละ ที่เขียนในเอกสาร (บาท)<input id="h_pendoc" class="num" inputmode="decimal"></label>
+      <label class="f wide">หมายเหตุท้ายบัญชี<textarea id="h_remark"></textarea></label>
+    </div>
+  </section>
+
+  <section class="panel calc-only">
+    <h2><span class="n">2</span>เกณฑ์ถัวจ่าย</h2>
+    <div class="grid">
+      <label class="f">Underrun ต่ำกว่า (% ของปริมาณสัญญา)<input id="r_under" class="num" inputmode="decimal"></label>
+      <label class="f">จ่ายราคาเต็มไม่เกิน (%)<input id="r_lim1" class="num" inputmode="decimal"></label>
+      <label class="f">ช่วงที่ 2 ไม่เกิน (%)<input id="r_lim2" class="num" inputmode="decimal"></label>
+      <label class="f">ช่วงที่ 2 จ่าย (% ของราคาต่อหน่วย)<input id="r_pay2" class="num" inputmode="decimal"></label>
+      <label class="f">ส่วนที่เกินช่วงที่ 2 จ่าย (%)<input id="r_pay3" class="num" inputmode="decimal"></label>
+    </div>
+    <label class="check"><input type="checkbox" id="r_waive"> ผู้รับจ้างยินยอมไม่ขอรับค่าชดเชย (Overhead and Mobilization) ทุกรายการ — ถ้าไม่ติ๊ก ระบบจะเตือนรายการ Underrun ให้คำนวณค่าชดเชย</label>
+    <div class="note">ราคาต่อหน่วยของช่วงที่ 2 และ 3 ปัดเป็นทศนิยม 2 ตำแหน่งก่อนคูณปริมาณ (เช่น 25.81 × 90% = 23.23) จำนวนเงินแต่ละช่วงปัด 2 ตำแหน่ง</div>
+  </section>
+
+  <section class="panel calc-only">
+    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;align-items:center">
+      <h2><span class="n">3</span>รายการงาน</h2>
+      <div class="btns"><button type="button" id="bAdd">+ เพิ่มรายการ</button></div>
+    </div>
+    <div class="tbl-wrap">
+      <table id="tbl">
+        <thead>
+          <tr class="grp">
+            <th rowspan="2">ลำดับ</th><th rowspan="2" style="min-width:260px">รายการ</th><th rowspan="2">หน่วย</th><th rowspan="2">ราคาต่อหน่วย<br>(บาท)</th>
+            <th colspan="2">งานตามสัญญา</th><th colspan="2">ปริมาณในสนาม</th>
+            <th>ไม่เกิน <span class="l1"></span>%</th><th colspan="2">เกิน <span class="l1"></span>–<span class="l2"></span>%</th><th colspan="2">เกิน <span class="l2"></span>%</th>
+            <th rowspan="2">ค่างานตามจริง<br>(บาท)</th><th colspan="2">เปรียบเทียบกับสัญญา</th><th rowspan="2">สถานะ</th><th rowspan="2" style="min-width:150px">หมายเหตุ</th><th rowspan="2"></th>
+          </tr>
+          <tr>
+            <th>ปริมาณ</th><th>จำนวนเงิน</th><th>ปริมาณ</th><th>คิดเป็น %</th>
+            <th>ปริมาณ</th><th>ปริมาณ</th><th>ราคา/หน่วย</th><th>ปริมาณ</th><th>ราคา/หน่วย</th>
+            <th>± ปริมาณ</th><th>± จำนวนเงิน</th>
+          </tr>
+        </thead>
+        <tbody id="tb"></tbody>
+        <tfoot><tr>
+          <td colspan="5" class="r">รวม</td><td class="r" id="f_ca"></td><td colspan="7"></td><td class="r" id="f_aa"></td><td></td><td class="r" id="f_d"></td><td colspan="3"></td>
+        </tr></tfoot>
+      </table>
+    </div>
+    <div class="note">ช่องที่มีขีดสีด้านซ้าย = มีข้อผิดพลาด (แดง) หรือข้อควรตรวจ (ส้ม/ฟ้า) ดูรายละเอียดในแถบแจ้งเตือนด้านบน · ใส่ปริมาณสัญญาเป็น 0 สำหรับรายการเพิ่มใหม่ และปริมาณในสนามเป็น 0 สำหรับรายการที่ยกเลิก</div>
+  </section>
+
+  <div class="two calc-only">
+    <section class="panel">
+      <h2><span class="n">4</span>สรุปผลการถัวจ่าย</h2>
+      <div class="sum" id="sum"></div>
+    </section>
+    <section class="panel">
+      <h2><span class="n">5</span>เทียบกับตัวเลขที่พิมพ์ในเอกสาร</h2>
+      <div class="note">พิมพ์ยอดที่ปรากฏในเอกสารจริงลงช่องด้านล่าง ระบบจะเทียบกับค่าที่คำนวณได้ ช่องที่เว้นว่างจะไม่ตรวจ</div>
+      <div class="cmp" id="cmp"></div>
+    </section>
+  </div>
+
+  <section class="panel calc-only">
+    <h2><span class="n">6</span>ผู้ลงนามและข้อความในเอกสาร</h2>
+    <div class="tbl-wrap" style="border:0">
+      <table class="sig-tbl" style="min-width:640px">
+        <thead><tr><th style="text-align:left">ลงนามในฐานะ</th><th style="text-align:left">ชื่อ</th><th style="text-align:left">ตำแหน่ง</th><th></th></tr></thead>
+        <tbody id="sigBody"></tbody>
+      </table>
+    </div>
+    <div class="btns"><button type="button" id="bAddSig">+ เพิ่มผู้ลงนาม</button></div>
+    <div class="note">หน้ารายละเอียดรายการเพิ่ม/ลด ใช้ผู้ลงนามที่ลงนามในฐานะ "ผู้ควบคุมงาน"</div>
+    <div class="grid">
+      <label class="f wide">เหตุผลที่ปริมาณงานมากกว่าสัญญา<input id="h_reasonInc"></label>
+      <label class="f wide">เหตุผลที่ปริมาณงานน้อยกว่าสัญญา<input id="h_reasonDec"></label>
+    </div>
+  </section>
+</div>
+  <footer class="credit">Concept &amp; Development by Miss Narama Woraklan · Krabi Highway District</footer>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+const KEY='thuajai-v1';
+const SAMPLE={
+  h:{no:'กบ1. 29/2569',date:'20 กุมภาพันธ์ 2569',round:'1',contractor:'บริษัท ซีเอสจักรกล จำกัด',
+     project:'งานก่อสร้างสพานลอยคนเดินข้ามหรือทางลอด',loc:'ทางหลวงหมายเลข 4 ตอน ตลาดเก่า - คลองท่อม ที่ กม.975+500 ปริมาณงาน 1 แห่ง',
+     value:'8606700',start:'2026-02-21',end:'2026-08-19',days:'180',penrate:'0.25',pendoc:'21516.75',
+     remark:'ผู้รับจ้างยินดีไม่ขอรับเงินค่าชดเชยซึ้งเป็นค่า Overhead and Mobilization ที่เกิดขึ้นในทุกรายการ'},
+  r:{under:'75',lim1:'125',lim2:'150',pay2:'90',pay3:'83',waive:true},
+  items:[
+   ['REMOVAL OF EXISTING BUS STOP SHELTER','EACH',7935.79,1,1,''],
+   ['EDGE CUT 10 CM. THICK','M.',25.81,160,522,''],
+   ['CLEARING AND GRUBBING ( ขนาดเบา )','SQ.M.',2.44,1440,1440,''],
+   ['EARTH FILL UNDER SIDEWALK','CU.M.',346.07,189,220,''],
+   ['PEDESTRIAN BRIDGE STA. 975+500 TYPE C STAIR TYPE 3 SPAN (1x14.00)+(1x22.00)+(1x14.00) M.','EACH',3500137.90,1,1,''],
+   ['NEW R.C.PIPE CULVERTS DIA. 1.20 M. CLASS 3','M.',5405.42,142,137,''],
+   ['R.C. MANHOLES TYPE C FOR R.C.P. DIA. 1.20 M. WITH R.C. COVER','EACH',33505.58,11,11,''],
+   ['RETAINING WALL TYPE 1B','M.',15255.42,160,0,'ยกเลิกรายการ'],
+   ['CONCRETE CURB AND GUTTER','M.',901.11,160,130,''],
+   ['CONCRETE SLAB 7 CM. THICK WITH COMPACTED SAND 5 CM. THICK','SQ.M.',338.53,630,496,''],
+   ['BUS STOP SHELTER TYPE F','EACH',70661.38,5,5,''],
+   ['CONCRETE BARRIER FOR PEDESTRIAN BRIDGE','EACH',51727.71,6,6,''],
+   ['BORED PILE DIA.0.50 M.','M.',2027.80,200,83.85,'ผู้รับจ้างไม่ขอรับค่า OH'],
+   ['ป้ายในงานก่อสร้าง/งานบูรณะ บริเวณช่องจราจรซ้าย สำหรับทางหลวงหลายช่องจราจร','ชุด',21893.00,1,1,''],
+   ['RETAINING WALL TYPE 2A','M.',4403.57,0,106,''],
+   ['PEDESTRIAN BRIDGE BARRIER','M.',3152.51,0,170,''],
+   ['R.C. U-DITCH TYPE A WITH R.C.COVER','M.',8134.54,0,50,''],
+   ['R.C. U-DITCH SPECIAL TYPE A WITH STEEL COVER','M.',13210.83,0,100,''],
+   ['BARRIER AND CURB MARKING','SQ.M.',105.24,0,210,''],
+   ['REFLECTING TARGET TYPE III FOR BARRIER','EACH',150.00,0,28,'']
+  ].map((a,i)=>({desc:a[0],unit:a[1],price:String(a[2]),cq:String(a[3]),aq:String(a[4]),note:a[5]})),
+  doc:{inc:'2775545.73',incw:'สองล้านเจ็ดแสนเจ็ดหมื่นห้าพันห้าร้อยสี่สิบห้าบาทเจ็ดสิบสามสตางค์',
+       dec:'2564225.77',decw:'สองล้านห้าแสนหกหมื่นสี่พันสองร้อยยี่สิบห้าบาทเจ็ดสิบเจ็ดสตางค์',
+       after:'8606426.14',afterw:'แปดล้านหกแสนหกพันสี่ร้อยยี่สิบหกบาทสิบสี่สตางค์',
+       rem:'273.86',remw:'สองร้อยเจ็ดสิบสามบาทแปดสิบหกสตางค์',
+       incn:'8',decn:'5',contractw:'แปดล้านหกแสนหกพันเจ็ดร้อยบาทถ้วน'},
+  sign:[
+    {role:'ผู้รับจ้าง/ตัวแทนผู้รับจ้าง',name:'นายวริศ วรรคจันทร์',pos:'วิศวกรควบคุมงานก่อสร้างผู้รับจ้าง'},
+    {role:'ผู้ควบคุมงาน',name:'นายนิตินัย สังข์แก้ว',pos:'วิศวกรโยธาปฏิบัติการ'},
+    {role:'ประธานกรรมการฯ',name:'นายทรงฤทธิ์ ชยานันท์',pos:'ผอ.ขท.กระบี่'},
+    {role:'กรรมการฯ',name:'นายคุณวุฒิ สุนทรนนท์',pos:'รอ.ขท กระบี่ (ว.)'},
+    {role:'ผู้ช่วยผู้ควบคุมงาน',name:'นายสุทธิพงษ์ เพ็งจันทร์',pos:'นายช่างโยธาชำนาญงาน'},
+    {role:'กรรมการฯ',name:'นายระพีพล อภิรัตนวงศ์',pos:'วิศวกรโยธาชำนาญการ'},
+    {role:'กรรมการฯ',name:'นายพิเศษ เครือสิงห์',pos:'นายช่างโยธาปฏิบัติงาน'}]
+};
+SAMPLE.h.reasonInc='ปริมาณงานจริงในสนามมากกว่าปริมาณงานในสัญญา';
+SAMPLE.h.reasonDec='ปริมาณงานจริงในสนามน้อยกว่าปริมาณงานในสัญญา';
+function migrate(o){if(!o)return o;if(!Array.isArray(o.sign))o.sign=clone(SAMPLE.sign);
+  if(o.h&&o.h.reasonInc===undefined)o.h.reasonInc=SAMPLE.h.reasonInc;if(o.h&&o.h.reasonDec===undefined)o.h.reasonDec=SAMPLE.h.reasonDec;o.doc=o.doc||{};return o}
+const TYPOS=[['สพาน','สะพาน'],['ซึ้งเป็น','ซึ่งเป็น'],['ปริมาน','ปริมาณ'],['อนุญาติ','อนุญาต'],['ผู้รับจ้า ','ผู้รับจ้าง '],['กำหนนด','กำหนด'],['สัญญ ','สัญญา '],['เอกสารแนป','เอกสารแนบ']];
+let S=null;
+let filt={e:true,w:true,i:true};
+
+function clone(o){return JSON.parse(JSON.stringify(o))}
+function load(){try{const t=localStorage.getItem(KEY);return t?JSON.parse(t):null}catch(e){return null}}
+const DBKEY='thuajai-db-v1';
+let DB={v:1,cur:null,projects:[]},lastJSON='';
+const uid=()=>'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+function loadDB(){
+  try{const t=localStorage.getItem(DBKEY);if(t){const o=JSON.parse(t);if(o&&Array.isArray(o.projects)){DB=o;return}}}catch(e){}
+  const old=migrate(load());const now=Date.now();
+  DB={v:1,cur:null,projects:[{id:uid(),created:now,updated:now,data:old||clone(SAMPLE)}]};
+  writeDB();
+}
+function writeDB(){try{localStorage.setItem(DBKEY,JSON.stringify(DB))}catch(e){}}
+function curProj(){return DB.projects.find(p=>p.id===DB.cur)}
+function save(){const p=curProj();if(!p||!S)return;const j=JSON.stringify(S);if(j===lastJSON)return;
+  const changed=lastJSON!=='';lastJSON=j;p.data=JSON.parse(j);if(changed)p.updated=Date.now();writeDB()}
+const $=id=>document.getElementById(id);
+function parse(v){if(v===null||v===undefined)return NaN;const s=String(v).replace(/[,\s]/g,'');if(s===''||s==='-')return NaN;return /^-?\d*\.?\d+$/.test(s)?Number(s):NaN}
+function isBlank(v){return String(v??'').replace(/[,\s-]/g,'')===''}
+const r2=x=>Math.round((x+Number.EPSILON)*100)/100;
+const r3=x=>Math.round((x+Number.EPSILON)*1000)/1000;
+const fm=(x,d=2)=>(x===null||isNaN(x))?'–':x.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const fz=(x,d=2)=>(Math.abs(x)<0.0005)?'-':fm(x,d);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---- Thai baht text ---- */
+const TD=['','หนึ่ง','สอง','สาม','สี่','ห้า','หก','เจ็ด','แปด','เก้า'],TP=['','สิบ','ร้อย','พัน','หมื่น','แสน'];
+function readInt(s){ // s: digit string
+  s=s.replace(/^0+/,''); if(!s)return '';
+  if(s.length>6){return readInt(s.slice(0,-6))+'ล้าน'+readInt(s.slice(-6))}
+  let out='',n=s.length;
+  for(let i=0;i<n;i++){const d=+s[i],p=n-i-1; if(!d)continue;
+    if(p===0&&d===1&&n>1)out+='เอ็ด';
+    else if(p===1&&d===2)out+='ยี่';
+    else if(p===1&&d===1)out+='';
+    else out+=TD[d];
+    out+=TP[p];}
+  return out;}
+function bahtText(x){
+  if(isNaN(x))return '';
+  if(x<0)return 'ลบ'+bahtText(-x);
+  const [i,f]=r2(x).toFixed(2).split('.');
+  let b=readInt(i),st=readInt(f);
+  if(!b&&!st)return 'ศูนย์บาทถ้วน';
+  return (b?b+'บาท':'')+(st?st+'สตางค์':'ถ้วน');}
+const normW=s=>String(s||'').replace(/[\s()\-–]/g,'');
+
+/* ---- dates ---- */
+const TM=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+function thDate(iso){if(!iso)return '';const [y,m,d]=iso.split('-').map(Number);return d+' '+TM[m-1]+' '+(y+543)}
+function daysBetween(a,b){if(!a||!b)return NaN;return Math.round((Date.parse(b+'T00:00:00Z')-Date.parse(a+'T00:00:00Z'))/864e5)+1}
+
+/* ---- calc ---- */
+function rules(){const r=S.r;return{under:parse(r.under),lim1:parse(r.lim1),lim2:parse(r.lim2),pay2:parse(r.pay2),pay3:parse(r.pay3)}}
+function calcItem(it,R){
+  const p=parse(it.price),c=isBlank(it.cq)?0:parse(it.cq),a=isBlank(it.aq)?0:parse(it.aq);
+  const o={p,c,a,valid:!isNaN(p)&&!isNaN(c)&&!isNaN(a)&&p>=0&&c>=0&&a>=0};
+  if(!o.valid)return o;
+  o.ca=r2(c*p);
+  o.isNew=c===0&&a>0; o.cancel=c>0&&a===0; o.empty=c===0&&a===0;
+  o.pct=c>0?r3(a/c*100):null;
+  o.p2=r2(p*R.pay2/100); o.p3=r2(p*R.pay3/100);
+  if(c===0){o.q1=a;o.q2=0;o.q3=0}
+  else{const L1=r3(c*R.lim1/100),L2=r3(c*R.lim2/100);
+    o.q1=Math.min(a,L1); o.q2=r3(Math.max(0,Math.min(a,L2)-L1)); o.q3=r3(Math.max(0,a-L2));}
+  o.under=c>0&&o.pct<R.under;
+  o.a1=r2(o.q1*p); o.a2=r2(o.q2*o.p2); o.a3=r2(o.q3*o.p3);
+  o.aa=r2(o.a1+o.a2+o.a3);
+  o.dq=r3(a-c); o.d=r2(o.aa-o.ca);
+  o.band=o.empty?'':o.isNew?'new':o.cancel?'cancel':o.q3>0?'over2':o.q2>0?'over1':o.under?'under':'';
+  return o;}
+
+/* ---- table render ---- */
+const COLS=['desc','unit','price','cq','aq','note'];
+function renderTable(){
+  const tb=$('tb');tb.innerHTML='';
+  S.items.forEach((it,i)=>{
+    const tr=document.createElement('tr');tr.dataset.i=i;tr.id='row'+i;
+    tr.innerHTML=`<td class="c">${i+1}</td>
+    <td><input data-k="desc" id="d${i}" value="${esc(it.desc)}"></td>
+    <td><input data-k="unit" id="u${i}" value="${esc(it.unit)}" style="width:70px"></td>
+    <td><input data-k="price" id="p${i}" class="num" inputmode="decimal" value="${esc(it.price)}" style="width:120px"></td>
+    <td><input data-k="cq" id="c${i}" class="num" inputmode="decimal" value="${esc(it.cq)}" style="width:90px"></td>
+    <td class="r" data-o="ca"></td>
+    <td><input data-k="aq" id="a${i}" class="num" inputmode="decimal" value="${esc(it.aq)}" style="width:90px"></td>
+    <td class="r" data-o="pct"></td>
+    <td class="r" data-o="q1"></td><td class="r" data-o="q2"></td><td class="r dim" data-o="p2"></td>
+    <td class="r" data-o="q3"></td><td class="r dim" data-o="p3"></td>
+    <td class="r" data-o="aa"></td><td class="r" data-o="dq"></td><td class="r" data-o="d"></td>
+    <td class="c" data-o="tag"></td>
+    <td><input data-k="note" id="n${i}" value="${esc(it.note)}"></td>
+    <td><button type="button" class="x" data-del="${i}" title="ลบรายการนี้" aria-label="ลบรายการที่ ${i+1}">✕</button></td>`;
+    tb.appendChild(tr);});
+}
+const TAGS={new:['new','รายการใหม่'],cancel:['cancel','ยกเลิก'],over2:['over2','Overrun > L2'],over1:['over1','Overrun > L1'],under:['under','Underrun']};
+
+/* ---- main update ---- */
+function update(){
+  const R=rules(),h=S.h,alerts=[];
+  const add=(lv,where,msg,fix,row)=>alerts.push({lv,where,msg,fix,row});
+  document.querySelectorAll('.l1').forEach(e=>e.textContent=isNaN(R.lim1)?'?':R.lim1);
+  document.querySelectorAll('.l2').forEach(e=>e.textContent=isNaN(R.lim2)?'?':R.lim2);
+
+  // rules check
+  const rbad=[];
+  [['r_under',R.under],['r_lim1',R.lim1],['r_lim2',R.lim2],['r_pay2',R.pay2],['r_pay3',R.pay3]].forEach(([id,v])=>{const b=isNaN(v)||v<0;$(id).classList.toggle('bad',b);if(b)rbad.push(id)});
+  if(rbad.length)add('e','เกณฑ์ถัวจ่าย','มีช่องเกณฑ์ว่างหรือไม่ใช่ตัวเลข','ใส่ตัวเลขให้ครบทุกช่องในหัวข้อ 2');
+  else{
+    if(R.lim2<=R.lim1)add('e','เกณฑ์ถัวจ่าย',`ช่วงที่ 2 (${R.lim2}%) ต้องมากกว่าช่วงราคาเต็ม (${R.lim1}%)`,'แก้ตัวเลขช่วงในหัวข้อ 2');
+    if(R.under>=R.lim1)add('e','เกณฑ์ถัวจ่าย','เกณฑ์ Underrun ต้องน้อยกว่าเกณฑ์ราคาเต็ม','แก้ตัวเลขในหัวข้อ 2');
+    if(R.pay2>100||R.pay3>100)add('w','เกณฑ์ถัวจ่าย','อัตราจ่ายส่วนเกินมากกว่า 100% ของราคาต่อหน่วย','ตรวจเงื่อนไขในสัญญาอีกครั้ง');
+    if(R.pay3>R.pay2)add('w','เกณฑ์ถัวจ่าย','อัตราจ่ายช่วงที่ 3 สูงกว่าช่วงที่ 2','ปกติช่วงที่เกินมากกว่าจะจ่ายในอัตราต่ำกว่า');
+  }
+
+  // items
+  let tCA=0,tAA=0,inc=0,dec=0,incN=0,decN=0,newSum=0,newN=0,cancelSum=0;
+  const rows=$('tb').children;
+  const rulesOk=!rbad.length&&R.lim2>R.lim1;
+  S.items.forEach((it,i)=>{
+    const tr=rows[i],o=calcItem(it,R),where='รายการที่ '+(i+1);
+    let sev='';const mark=s=>{if(s==='e'||(s==='w'&&sev!=='e')||(s==='i'&&!sev))sev=s};
+    ['price','cq','aq'].forEach(k=>{
+      const v=it[k],n=parse(v),blankOk=k!=='price'&&isBlank(v);
+      const bad=!blankOk&&(isNaN(n)||n<0);
+      tr.querySelector(`[data-k="${k}"]`).classList.toggle('bad',bad);
+    });
+    tr.querySelector('[data-k="desc"]').classList.toggle('bad',!String(it.desc).trim());
+    if(!String(it.desc).trim()){add('e',where,'ไม่มีชื่อรายการ','พิมพ์ชื่อรายการหรือลบแถวนี้',i);mark('e')}
+    const set=(k,t,cls)=>{const c=tr.querySelector(`[data-o="${k}"]`);c.innerHTML=t;c.className='r'+(cls?' '+cls:'')+(k==='p2'||k==='p3'?' dim':'')+(k==='tag'?' c':'')};
+    if(!o.valid||!rulesOk){
+      if(!o.valid){add('e',where,'ราคาต่อหน่วยหรือปริมาณว่าง ติดลบ หรือไม่ใช่ตัวเลข','ใส่เป็นตัวเลข เช่น 1,250.50 (ปริมาณที่ไม่มีใส่ 0)',i);mark('e')}
+      ['ca','pct','q1','q2','p2','q3','p3','aa','dq','d','tag'].forEach(k=>set(k,'–'));
+      tr.className=sev?'sev-'+sev:'';return;}
+    if(!String(it.unit).trim()){add('w',where,'ไม่ได้ระบุหน่วย','ใส่หน่วย เช่น M., SQ.M., EACH',i);mark('w')}
+    if(o.p===0&&o.a>0){add('e',where,'ราคาต่อหน่วยเป็น 0 แต่มีปริมาณงาน','ใส่ราคาต่อหน่วยตามสัญญา',i);mark('e')}
+    tCA+=o.ca;tAA+=o.aa;
+    if(o.d>0.004){inc+=o.d;incN++} else if(o.d<-0.004){dec+=-o.d;decN++}
+    set('ca',fz(o.ca));
+    set('pct',o.isNew?'<span class="dim">ใหม่</span>':o.pct===null?'–':fm(o.pct,3));
+    set('q1',fz(o.q1,3)); set('q2',fz(o.q2,3)); set('p2',o.q2?fm(o.p2):'-'); set('q3',fz(o.q3,3)); set('p3',o.q3?fm(o.p3):'-');
+    set('aa',fz(o.aa)); set('dq',fz(o.dq,3),o.dq>0?'plus':o.dq<0?'minus':''); set('d',fz(o.d),o.d>0?'plus':o.d<0?'minus':'');
+    const tg=TAGS[o.band];
+    set('tag',tg?`<span class="tag ${tg[0]}">${tg[1].replace('L1',R.lim1+'%').replace('L2',R.lim2+'%')}</span>`:'');
+    if(o.isNew){newSum+=o.aa;newN++;add('w',where,`รายการเพิ่มใหม่ (ไม่มีในสัญญา) ${fm(o.aa)} บาท`,'ต้องมีการแก้ไขสัญญา/คำสั่งเปลี่ยนแปลงงาน และตกลงราคาต่อหน่วยรองรับ แนบหลักฐานประกอบ',i);mark('w')}
+    if(o.cancel){cancelSum+=o.ca;add('w',where,`ยกเลิกทั้งรายการ ลดลง ${fm(o.ca)} บาท`,'ควรมีการอนุมัติยกเลิกรายการรองรับ แนบหลักฐานประกอบ',i);mark('w');
+      if(!/ยกเลิก/.test(it.note)){add('i',where,'หมายเหตุยังไม่ได้ระบุว่ายกเลิกรายการ','พิมพ์ "ยกเลิกรายการ" ในช่องหมายเหตุ',i);mark('i')}}
+    if(o.under&&!o.cancel){add(S.r.waive?'i':'w',where,`ปริมาณ Underrun ${fm(o.pct,3)}% (ต่ำกว่า ${R.under}%)`,S.r.waive?'ผู้รับจ้างยินยอมไม่ขอรับค่าชดเชยแล้ว ตรวจว่ามีหนังสือยินยอมแนบ':'ต้องพิจารณาค่าชดเชยตามเงื่อนไขสัญญา หรือขอหนังสือยินยอมไม่ขอรับ',i);mark(S.r.waive?'i':'w')}
+    if(o.cancel&&!S.r.waive){add('w',where,'รายการยกเลิกถือเป็น Underrun 0%','พิจารณาค่าชดเชยตามเงื่อนไขสัญญา',i);mark('w')}
+    if(o.q3>0){add('i',where,`Overrun ${fm(o.pct,3)}% เกิน ${R.lim2}% — จ่ายส่วนเกินในอัตรา ${R.pay3}%`,'ตรวจเหตุผลที่ปริมาณเพิ่มมาก และบันทึกการวัดปริมาณในสนาม',i);mark('i')}
+    if(/OH|UNDERRUN|underrun|ไม่ขอรับ/.test(it.note)&&!o.under&&!o.cancel){add('w',where,'หมายเหตุพูดถึง Underrun / ค่า OH แต่รายการนี้ไม่ได้ต่ำกว่าเกณฑ์','หมายเหตุอาจอยู่ผิดแถว ตรวจในไฟล์ต้นฉบับ',i);mark('w')}
+    if(o.empty){add('i',where,'ปริมาณสัญญาและปริมาณในสนามเป็น 0 ทั้งคู่','ลบแถวนี้ถ้าไม่ใช้',i);mark('i')}
+    tr.className=sev?'sev-'+sev:'';
+  });
+  tCA=r2(tCA);tAA=r2(tAA);inc=r2(inc);dec=r2(dec);
+  $('f_ca').textContent=fm(tCA);$('f_aa').textContent=fm(tAA);
+  const net=r2(tAA-tCA);$('f_d').textContent=fm(net);$('f_d').className='r '+(net>0?'plus':net<0?'minus':'');
+
+  // header checks
+  const val=parse(h.value);
+  $('h_value').classList.toggle('bad',isNaN(val));
+  if(isNaN(val))add('e','ข้อมูลสัญญา','ยังไม่ได้ใส่ค่าก่อสร้างตามสัญญา','ใส่ตามที่ระบุในสัญญา');
+  else{
+    if(Math.abs(val-tCA)>0.004)add('e','ข้อมูลสัญญา',`ผลรวมรายการตามสัญญา ${fm(tCA)} บาท ไม่ตรงกับค่าก่อสร้างตามสัญญา ${fm(val)} บาท (ต่าง ${fm(r2(tCA-val))})`,'ตรวจราคาต่อหน่วยหรือปริมาณตามสัญญาว่าพิมพ์ถูกทุกรายการ');
+    if(tAA-val>0.004)add('e','ผลถัวจ่าย',`ค่างานหลังถัวจ่าย ${fm(tAA)} บาท เกินวงเงินสัญญา ${fm(r2(tAA-val))} บาท`,'ต้องลดปริมาณ หรือแก้ไขสัญญาเพิ่มวงเงินก่อน');
+    if(newSum>0)add('i','ผลถัวจ่าย',`รายการเพิ่มใหม่ ${newN} รายการ รวม ${fm(newSum)} บาท = ${fm(newSum/val*100)}% ของค่างานตามสัญญา`,'สัดส่วนสูงควรมีเอกสารอนุมัติการเปลี่ยนแปลงงานชัดเจน');
+  }
+  const dc=daysBetween(h.start,h.end),dd=parse(h.days);
+  $('h_start_th').textContent=thDate(h.start);$('h_end_th').textContent=thDate(h.end);
+  $('h_days_calc').textContent=isNaN(dc)?'':`นับจากวันที่ได้ ${dc} วัน`;
+  if(!isNaN(dc)){
+    if(dc<=0)add('e','ข้อมูลสัญญา','วันสิ้นสุดสัญญาอยู่ก่อนวันเริ่มต้น','ตรวจวันที่');
+    else if(!isNaN(dd)&&dd!==dc)add('e','ข้อมูลสัญญา',`เวลาทำการ ${dd} วัน ไม่ตรงกับช่วงวันที่ (${dc} วัน นับรวมวันแรกและวันสุดท้าย)`,'ตรวจวันเริ่ม วันสิ้นสุด หรือจำนวนวัน');
+  }
+  $('h_days').classList.toggle('bad',!isNaN(dc)&&!isNaN(dd)&&dd!==dc);
+  const pr=parse(h.penrate),pc=(!isNaN(pr)&&!isNaN(val))?r2(val*pr/100):NaN,pd=parse(h.pendoc);
+  $('h_pen_calc').textContent=isNaN(pc)?'':`คำนวณได้ ${fm(pc)} บาท/วัน`;
+  const penBad=!isNaN(pc)&&!isBlank(h.pendoc)&&(isNaN(pd)||Math.abs(pd-pc)>0.004);
+  $('h_pendoc').classList.toggle('bad',penBad);
+  if(penBad)add('e','ข้อมูลสัญญา',`ค่าปรับวันละในเอกสาร ${fm(pd)} ไม่ตรงกับที่คำนวณ ${fm(pc)} บาท`,'ตรวจอัตราค่าปรับหรือยอดที่พิมพ์');
+  // typos
+  [['h_project','ชื่องาน'],['h_loc','สถานที่'],['h_remark','หมายเหตุท้ายบัญชี'],['h_contractor','ผู้รับจ้าง']].forEach(([id,lab])=>{
+    const t=S.h[id.slice(2)]||'';TYPOS.forEach(([w,c])=>{if(t.includes(w))add('w',lab,`พบคำว่า "${w.trim()}"`,`น่าจะเป็น "${c.trim()}"`)})});
+  S.items.forEach((it,i)=>TYPOS.forEach(([w,c])=>{if((it.desc+' '+it.note).includes(w))add('w','รายการที่ '+(i+1),`พบคำว่า "${w.trim()}"`,`น่าจะเป็น "${c.trim()}"`,i)}));
+
+  // summary
+  const rem=isNaN(val)?NaN:r2(val-tAA);
+  $('sum').innerHTML=`
+   <div class="row"><span class="k">ค่างานตามสัญญา (ผลรวมรายการ)</span><span class="v">${fm(tCA)}</span><span class="w">(${bahtText(tCA)})</span></div>
+   <div class="row"><span class="k">รายการที่มีค่างานมากกว่าสัญญา ${incN} รายการ</span><span class="v plus">+ ${fm(inc)}</span><span class="w">(${bahtText(inc)})</span></div>
+   <div class="row"><span class="k">รายการที่มีค่างานน้อยกว่าสัญญา ${decN} รายการ</span><span class="v minus">− ${fm(dec)}</span><span class="w">(${bahtText(dec)})</span></div>
+   <div class="row big"><span class="k">ค่างานหลังถัวจ่าย ครั้งที่ ${esc(h.round)}</span><span class="v">${fm(tAA)}</span><span class="w">(${bahtText(tAA)})</span></div>
+   <div class="row"><span class="k">ค่างานคงเหลือ (ค่าก่อสร้างตามสัญญา − หลังถัวจ่าย)</span><span class="v">${fm(rem)}</span><span class="w">${isNaN(rem)?'':'('+bahtText(rem)+')'}</span></div>
+   <div class="row"><span class="k">ตรวจสมการ สัญญา + เพิ่ม − ลด</span><span class="v">${fm(r2(tCA+inc-dec))}</span><span class="w">${Math.abs(r2(tCA+inc-dec)-tAA)<0.005?'ตรงกับค่างานหลังถัวจ่าย ✓':'ไม่ตรง'}</span></div>
+   <div class="row"><span class="k">ค่าปรับวันละ</span><span class="v">${fm(pc)}</span><span class="w">${isNaN(pr)?'':'ร้อยละ '+pr+' ของค่างานตามสัญญา'}</span></div>`;
+
+  // doc compare
+  const D=S.doc;
+  const C=[
+    ['contractw','ตัวอักษร ค่างานตามสัญญา','w',tCA],
+    ['incn','จำนวนรายการเพิ่ม','n',incN],
+    ['inc','ยอดรวมรายการเพิ่ม (บาท)','m',inc],['incw','ตัวอักษร ยอดรวมรายการเพิ่ม','w',inc],
+    ['decn','จำนวนรายการลด','n',decN],
+    ['dec','ยอดรวมรายการลด (บาท)','m',dec],['decw','ตัวอักษร ยอดรวมรายการลด','w',dec],
+    ['after','ค่างานหลังถัวจ่าย (บาท)','m',tAA],['afterw','ตัวอักษร ค่างานหลังถัวจ่าย','w',tAA],
+    ['rem','ค่างานคงเหลือ (บาท)','m',rem],['remw','ตัวอักษร ค่างานคงเหลือ','w',rem]];
+  let html='<span class="h">รายการ</span><span class="h">ตัวเลขในเอกสาร</span><span class="h">ผล</span>';
+  C.forEach(([k,lab,t,calc])=>{
+    const v=D[k]??'';let res='n',txt='ไม่ตรวจ',hint='';
+    if(String(v).trim()!==''){
+      if(t==='w'){const want=bahtText(calc);const ok=normW(v)===normW(want);res=ok?'ok':'e';txt=ok?'ตรง':'ไม่ตรง';
+        if(!ok)add('e','เอกสาร: '+lab,`เขียนว่า "${v}"`,`ที่ถูกคือ (${want})`)}
+      else{const n=parse(v),ok=!isNaN(n)&&Math.abs(n-calc)<0.005;res=ok?'ok':'e';txt=ok?'ตรง':'ไม่ตรง';
+        if(!ok)add('e','เอกสาร: '+lab,`เขียน ${isNaN(n)?'"'+v+'"':fm(n,t==='n'?0:2)}`,`ที่คำนวณได้คือ ${fm(calc,t==='n'?0:2)}`)}
+    }
+    const live=document.getElementById('dc_'+k);
+    if(!live) html+=`<label class="lbl" for="dc_${k}">${lab}</label><input id="dc_${k}" data-doc="${k}" class="${t==='w'?'':'num'}" value="${esc(v)}"><span class="res ${res}" id="dr_${k}">${txt}</span>`;
+    else{const r=$('dr_'+k);r.className='res '+res;r.textContent=txt;live.classList.toggle('bad',res==='e')}
+  });
+  if(!$('dc_contractw')){$('cmp').innerHTML=html;C.forEach(([k])=>{const r=$('dr_'+k);$('dc_'+k).classList.toggle('bad',r.classList.contains('e'))})}
+
+  renderAlerts(alerts);
+  {const n={e:0,w:0,i:0};alerts.forEach(a=>n[a.lv]++);S.meta={e:n.e,w:n.w,i:n.i,tCA,tAA,inc,dec,rem:isNaN(rem)?null:rem,val:isNaN(val)?null:val}}
+  renderDoc();
+  save();
+}
+
+/* ---- document pages ---- */
+let docPage='all';
+function renderDoc(){
+  const desk=$('desk');if(!desk||$('docView').hidden)return;
+  const R=rules(),h=S.h,rnd=esc(h.round||'1');
+  const rows=S.items.map((it,i)=>({it,i,o:calcItem(it,R)}));
+  const ok=rows.filter(r=>r.o.valid);
+  const d0=(x,d=2)=>(x===null||x===undefined||isNaN(x)||Math.abs(x)<0.0005)?'-':fm(x,d);
+  let tCA=0,tAA=0,sU=0,sN=0,s2=0,s3=0,inc=0,dec=0,incN=0,decN=0;
+  ok.forEach(({o})=>{tCA+=o.ca;tAA+=o.aa;if(o.under)sU+=o.a1;else sN+=o.a1;s2+=o.a2;s3+=o.a3;if(o.d>0.004){inc+=o.d;incN++}else if(o.d<-0.004){dec-=o.d;decN++}});
+  [tCA,tAA,sU,sN,s2,s3,inc,dec]=[tCA,tAA,sU,sN,s2,s3,inc,dec].map(r2);
+  const val=parse(h.value),rem=isNaN(val)?r2(tCA-tAA):r2(val-tAA);
+  const pen=(!isNaN(val)&&!isNaN(parse(h.penrate)))?r2(val*parse(h.penrate)/100):parse(h.pendoc);
+  const proj=esc(h.project),loc=esc(h.loc),no=esc(h.no),dt=esc(h.date),ctr=esc(h.contractor);
+  const sign=S.sign||[];
+  const sgn=s=>`<div class="s"><div>ลงชื่อ..................................................${esc(s.role)}</div><div>(${esc(s.name)})</div><div>${esc(s.pos)}</div></div>`;
+  const auto=(o,note)=>{let a=o.cancel?'ยกเลิกรายการ':o.q3>0?`OVERRUN > ${R.lim2} %`:o.q2>0?`OVERRUN > ${R.lim1} %`:o.under?`UNDERRUN < ${R.under} %`:'';
+    if(note&&a&&note.includes(a))a='';return [a,note].filter(Boolean).join(' ')||'-'};
+  const parts=[];
+
+  if(docPage==='all'||docPage==='summary'){
+    const body=rows.map(({it,i,o})=>{
+      if(!o.valid)return `<tr class="doc-err"><td class="c">${i+1}</td><td class="desc">${esc(it.desc)}</td><td colspan="22" class="c">ข้อมูลไม่ครบ</td></tr>`;
+      const u=o.under&&!o.cancel;
+      return `<tr><td class="c">${i+1}</td><td class="desc">${esc(it.desc)}</td><td>${esc(it.unit)}</td><td class="r">${fm(o.p)}</td>
+      <td class="r">${fm(o.c)}</td><td class="r">${d0(o.ca)}</td><td class="r">${o.cancel?'-':fm(o.a)}</td><td class="r">${o.cancel?'-':o.isNew?'ใหม่':d0(o.pct,3)}</td>
+      <td class="r">${u?fm(o.q1,2):'-'}</td><td class="r">${u?fm(o.p):'-'}</td><td class="r">${u?fm(o.a1):'-'}</td>
+      <td class="r">${!u&&o.q1?fm(o.q1,3):'-'}</td><td class="r">${!u&&o.q1?fm(o.p):'-'}</td><td class="r">${!u&&o.q1?fm(o.a1):'-'}</td>
+      <td class="r">${d0(o.q2,3)}</td><td class="r">${o.q2?fm(o.p2):'-'}</td><td class="r">${d0(o.a2)}</td>
+      <td class="r">${d0(o.q3,3)}</td><td class="r">${o.q3?fm(o.p3):'-'}</td><td class="r">${d0(o.a3)}</td>
+      <td class="r">${o.cancel?'-':fm(o.a,3)}</td><td class="r"><b>${d0(o.aa)}</b></td>
+      <td class="r${o.cancel?' hi':''}"><b>${o.dq?(o.dq<0?'- ':'')+fm(Math.abs(o.dq),3):'-'}</b></td><td class="r${o.cancel?' hi':''}"><b>${o.d?(o.d<0?'- ':'')+fm(Math.abs(o.d)):'-'}</b></td>
+      <td class="rm">${esc(auto(o,it.note))}</td></tr>`}).join('');
+    parts.push({k:'sum',key:'sum',html:`
+     <div class="p-head">
+      <div class="kv"><span>สัญญาเลขที่ ${no} ลงวันที่ ${dt}</span><span></span><span></span>
+        <span>วันเริ่มต้นสัญญา ${esc(thDate(h.start))}</span><span></span><span></span>
+        <span>วันสิ้นสุดสัญญา ${esc(thDate(h.end))}</span><span></span><span></span>
+        <span>เวลาทำการ ${esc(h.days)} วัน</span><span></span><span></span></div>
+      <div class="mid">บัญชีสรุปปริมาณงานและค่างานก่อสร้างการถัวจ่ายครั้งที่ ${rnd}<br>${proj}<br>${loc}</div>
+      <div class="kv"><span>ผู้รับจ้าง</span><span style="text-align:right">${ctr}</span><span></span>
+        <span>ค่าก่อสร้างตามสัญญา</span><span class="n">${fm(val)}</span><span>บาท</span>
+        <span>ค่างานก่อสร้างในสนาม</span><span class="n">${fm(tAA)}</span><span>บาท</span>
+        <span>ค่าปรับวันละ</span><span class="n">${fm(pen)}</span><span>บาท</span></div>
+     </div>
+     <table class="st">
+      <thead>
+       <tr><th rowspan="3">ลำดับ<br>ที่</th><th rowspan="3" style="width:260px">รายการ</th><th rowspan="3">หน่วย</th><th rowspan="3">ราคาต่อหน่วย<br>(บาท)</th>
+        <th colspan="2" rowspan="2">งานตามสัญญา</th><th colspan="2" rowspan="2">ถัวจ่ายครั้งที่ ${rnd}<br>ปริมาณในสนาม</th>
+        <th colspan="3">Underrun -ปริมาณ &lt;${R.under}%</th><th colspan="3" rowspan="2">ปริมาณ ${R.under}% - ${R.lim1}%</th>
+        <th colspan="3" rowspan="2">Overrun -ปริมาณ &gt;${R.lim1} -${R.lim2} %</th><th colspan="3" rowspan="2">Overrun -ปริมาณ &gt;${R.lim2} %</th>
+        <th colspan="2" rowspan="2">ประมาณการค่างานก่อสร้าง</th><th colspan="2" rowspan="2">เปรียบเทียบปริมาณงาน<br>+ มากกว่าสัญญาเดิม<br>- น้อยกว่าสัญญาเดิม</th><th rowspan="3" style="width:110px">หมายเหตุ</th></tr>
+       <tr><th colspan="3">ค่างานตามจริง</th></tr>
+       <tr><th>ปริมาณ</th><th>จำนวนเงิน<br>(บาท)</th><th>ปริมาณ</th><th>คิดเป็น<br>%</th>
+        <th>ปริมาณ</th><th>ราคา/<br>หน่วย</th><th>จำนวนเงิน<br>(บาท)</th><th>ปริมาณ</th><th>ราคา/หน่วย</th><th>จำนวนเงิน<br>(บาท)</th>
+        <th>ปริมาณ</th><th>ราคา/หน่วย</th><th>จำนวนเงิน<br>(บาท)</th><th>ปริมาณ</th><th>ราคา/หน่วย</th><th>จำนวนเงิน<br>(บาท)</th>
+        <th>ปริมาณ</th><th>จำนวนเงิน<br>(บาท)</th><th>ปริมาณ</th><th>จำนวนเงิน</th></tr>
+      </thead>
+      <tbody>${body}
+       <tr class="tot"><td></td><td></td><td></td><td></td><td></td><td class="r hi">${fm(tCA)}</td><td></td><td></td>
+        <td></td><td></td><td class="r">${d0(sU)}</td><td></td><td></td><td class="r">${d0(sN)}</td><td></td><td></td><td class="r">${d0(s2)}</td><td></td><td></td><td class="r">${d0(s3)}</td>
+        <td></td><td class="r">${fm(tAA)}</td><td></td><td class="r">${fm(r2(tCA-tAA))}</td><td></td></tr>
+      </tbody>
+     </table>
+     <div class="p-sum">
+      <div class="l">
+       <span>ค่างานตามสัญญา</span><span>เป็นเงิน</span><span class="n">${fm(tCA)} บาท</span><span class="w">(${bahtText(tCA)})</span>
+       <span>ค่างานหลังถัวจ่าย ครั้งที่ ${rnd}</span><span>เป็นเงิน</span><span class="n">${fm(tAA)} บาท</span><span class="w">(${bahtText(tAA)})</span>
+       <span>ค่างานคงเหลือ</span><span>เป็นเงิน</span><span class="n">${fm(rem)} บาท</span><span class="w">(${bahtText(rem)})</span>
+      </div>
+      <div class="rr">
+       <span>จำนวนรายการที่มีค่างาน <u>มากกว่า</u> สัญญาเดิม</span><span class="n">${incN}</span><span>รวมค่างานมากกว่าสัญญา</span><span class="n">${fm(inc)} บาท</span>
+       <span>จำนวนรายการที่มีค่างาน <u>น้อยกว่า</u> สัญญาเดิม</span><span class="n">${decN}</span><span>รวมค่างานน้อยกว่าสัญญา</span><span class="n">${fm(dec)} บาท</span>
+       <span></span><span></span><span>รวมเงินคงเหลือ</span><span class="n" style="background:var(--hi)">${fm(rem)} บาท</span>
+      </div>
+     </div>
+     ${String(h.remark||'').trim()?`<div class="p-remark"><u>***หมายเหตุ</u> ${esc(h.remark)}</div>`:''}
+     <div class="signs">${sign.map(sgn).join('')}</div>`});
+  }
+
+  const title=`<div class="d-title">รายละเอียดแสดงปริมาณงานและค่างานประกอบการถัวจ่าย ครั้งที่ ${rnd}<br>${proj} ${loc}<br>สัญญาเลขที่ ${no} ลงวันที่ ${dt}<br>โดย ${ctr} เป็นผู้รับจ้าง</div>`;
+  const ctl=sign.find(s=>String(s.role).trim()==='ผู้ควบคุมงาน')||sign[0];
+  const dr=(a,b,c,d,e,f,g,hh,ii,j,cls='')=>`<div class="d-row ${cls}"><span></span><span>${a}</span><span class="n">${b}</span><span>${c}</span><span>${d}</span><span class="n">${e}</span><span>${f}</span><span>${g}</span><span class="n">${hh}</span><span>${j||''}</span></div>`;
+  const p3=x=>fm(x,3);
+  if(docPage==='all'||docPage==='inc'){
+    const L=ok.filter(r=>r.o.d>0.004);
+    const items=L.map(({it,i,o},k)=>{const u=esc(it.unit);
+      let s=`<div class="d-item"><div class="hd"><span>${k+1}</span><span>รายการที่ ${i+1}</span><span>${esc(it.desc)}</span></div>`;
+      s+=dr('ปริมาณงานตามสัญญา',d0(o.c,3),u,'ๆ ละ',p3(o.p),'บาท','เป็นเงิน',d0(o.ca,3),'','บาท');
+      s+=dr('ปริมาณงานขอถัวจ่ายครั้งที่ '+rnd,p3(o.a),u,'ปริมาณเพิ่มขึ้น',p3(o.dq),u,'คิดเป็น',o.isNew?'รายการใหม่':p3(o.pct),'',o.isNew?'':'%');
+      s+=dr(`ปริมาณงานไม่เกิน ${R.lim1}% จ่าย 100%`,p3(o.q1),u,'ๆ ละ',p3(o.p),'บาท','เป็นเงิน',fm(o.a1),'','บาท');
+      s+=dr(`ปริมาณงานเกิน ${R.lim1}% - ${R.lim2}% จ่าย ${R.pay2}%`,d0(o.q2,3),u,'ๆ ละ',o.q2?p3(o.p2):'-','บาท','เป็นเงิน',d0(o.a2),'','บาท');
+      if(o.q3>0)s+=dr(`ปริมาณงานเกิน ${R.lim2}% จ่าย ${R.pay3}%`,p3(o.q3),u,'ๆ ละ',p3(o.p3),'บาท','เป็นเงิน',fm(o.a3),'','บาท');
+      s+=`<div class="d-row t"><span></span><span class="lbl">รวมเป็นเงิน</span><span class="n">${fm(o.aa)}</span><span>บาท</span></div>`;
+      s+=`<div class="d-row t t2"><span></span><span class="lbl">ค่างานมากกว่าสัญญา เป็นเงิน</span><span class="n">${fm(o.d)}</span><span>บาท</span></div></div>`;
+      return s});
+    parts.push({k:'det',key:'inc',head:title+`<div class="d-sec">รายการที่มีค่างานมากกว่าในสัญญา จำนวน ${incN} รายการ</div>`,items:items.length?items:['<div>ไม่มีรายการ</div>'],end:`<div class="d-end"><div class="d-foot"><div class="reason">ปริมาณงานมากกว่าสัญญาเนื่องจาก ${esc(h.reasonInc)}</div>
+      รายการที่มีค่างานมากกว่าในสัญญา รวม ${incN} รายการ รวมเป็นเงิน ${fm(inc)} บาท<br>- ${bahtText(inc)} -</div>
+      ${ctl?`<div class="signs one">${sgn(ctl)}</div>`:''}</div>`});
+  }
+  if(docPage==='all'||docPage==='dec'){
+    const L=ok.filter(r=>r.o.d<-0.004);
+    const items=L.map(({it,i,o},k)=>{const u=esc(it.unit);
+      let s=`<div class="d-item"><div class="hd"><span>${k+1}</span><span>รายการที่ ${i+1}</span><span>${esc(it.desc)}</span></div>`;
+      s+=dr('ปริมาณงานตามสัญญา',p3(o.c),u,'ๆ ละ',p3(o.p),'บาท','เป็นเงิน',fm(o.ca,3),'','บาท');
+      s+=dr('ปริมาณงานขอถัวจ่ายครั้งที่ '+rnd,d0(o.a,3),u,'ปริมาณลดลง',p3(-o.dq),u,'คิดเป็น',p3(o.pct),'','%');
+      s+=dr('ปริมาณงานขอถัวจ่ายครั้งที่ '+rnd,d0(o.a,3),u,'ๆ ละ',p3(o.p),'บาท','เป็นเงิน',d0(o.aa),'','บาท');
+      s+=`<div class="d-row t"><span></span><span class="lbl">รวมเป็นเงิน</span><span class="n">${d0(o.aa)}</span><span>บาท</span></div>`;
+      s+=`<div class="d-row t t2"><span></span><span class="lbl">ค่างานน้อยกว่าสัญญา เป็นเงิน</span><span class="n">${fm(-o.d)}</span><span>บาท</span></div></div>`;
+      return s});
+    parts.push({k:'det',key:'dec',head:title+`<div class="d-sec">รายการที่มีค่างานน้อยกว่าในสัญญา จำนวน ${decN} รายการ</div>`,items:items.length?items:['<div>ไม่มีรายการ</div>'],end:`<div class="d-end"><div class="d-foot"><div class="reason">ปริมาณงานน้อยกว่าสัญญาเนื่องจาก ${esc(h.reasonDec)}</div>
+      รายการที่มีค่างานน้อยกว่าในสัญญา รวม ${decN} รายการ รวมเป็นเงิน ${fm(dec)} บาท<br>- ${bahtText(dec)} -</div>
+      ${ctl?`<div class="signs one">${sgn(ctl)}</div>`:''}</div>`});
+  }
+  layoutSheets(parts);
+}
+
+/* ---- page setup + pagination ---- */
+const PAPERS={A4:[210,297],A3:[297,420],F4:[215,330],Letter:[216,279],Legal:[216,356]};
+const MM=96/25.4;
+const DOCN={sum:'บัญชีสรุป',inc:'รายการเพิ่ม',dec:'รายการลด'};
+const PDEFS={
+  sum:{paper:'A4',o:'L',mt:10,mb:10,ml:12,mr:10,scale:'fit',font:'14',bw:'0.5',rep:false,hi:true},
+  inc:{paper:'A4',o:'P',mt:15,mb:15,ml:20,mr:15,scale:'fit',font:'14',bw:'0.5',rep:true,hi:true},
+  dec:{paper:'A4',o:'P',mt:15,mb:15,ml:20,mr:15,scale:'fit',font:'14',bw:'0.5',rep:true,hi:true}};
+function pset(){
+  let p=S.print||{};
+  if(!p.sets){ // convert older single setting
+    const old=p,base=k=>Object.assign({},PDEFS[k]);
+    const sets={sum:base('sum'),inc:base('inc'),dec:base('dec')};
+    if(old.paper){['sum','inc','dec'].forEach(k=>Object.assign(sets[k],{paper:old.paper,mt:old.mt,mb:old.mb,ml:old.ml,mr:old.mr,bw:old.bw||'0.5',hi:old.hi!==false}));
+      sets.sum.o=old.sumO||'L';sets.sum.scale=old.sumScale||'fit';
+      ['inc','dec'].forEach(k=>{sets[k].o=old.detO||'P';sets[k].font=old.detFont||'14';sets[k].rep=old.rep!==false});}
+    p={view:old.view||'fit',who:'sum',sets};
+  }
+  ['sum','inc','dec'].forEach(k=>{p.sets[k]=Object.assign({},PDEFS[k],p.sets[k]||{})});
+  p.view=p.view||'fit';p.who=p.who||'sum';
+  S.print=p;return p}
+const cfg=k=>pset().sets[k];
+function pdim(C){const [w,h]=PAPERS[C.paper]||PAPERS.A4;return C.o==='L'?[h,w]:[w,h]}
+let lastSheets=[];
+function bwz(z,C){const b=parseFloat(C.bw)||0.5;return (b/(z||1)).toFixed(3)+'pt'}
+function margins(C){const m=k=>{const v=parseFloat(C[k]);return isNaN(v)||v<0?0:Math.min(v,60)};return [m('mt'),m('mr'),m('mb'),m('ml')]}
+function layoutSheets(parts){
+  const ms=$('measure'),sheets=[];
+  parts.forEach(p=>{
+    const C=cfg(p.key),[mt,mr,mb,ml]=margins(C),[W,H]=pdim(C),iw=(W-ml-mr)*MM,ih=(H-mt-mb)*MM;
+    const base={key:p.key,o:C.o,W,H,pad:[mt,mr,mb,ml],hi:C.hi,paper:C.paper};
+    if(p.k==='sum'){
+      ms.innerHTML=`<div class="paper land sheetc">${p.html}</div>`;
+      const el=ms.firstElementChild,w=el.offsetWidth,h=el.offsetHeight;
+      let z=C.scale==='fit'?Math.min(iw/w,ih/h):C.scale==='fitw'?iw/w:(parseFloat(C.scale)||100)/100;
+      const over=w*z>iw+2||h*z>ih+2;
+      sheets.push(Object.assign({},base,{z,over,html:`<div class="paper land sheetc" style="zoom:${z.toFixed(4)};width:${w}px;--bw:${bwz(z,C)}">${p.html}</div>`}));
+    } else {
+      const fs=parseFloat(C.font)||14,blocks=[p.head,...p.items,p.end];
+      const probe=cw=>{ms.innerHTML=`<div class="paper port sheetc" style="width:${cw}px;font-size:${fs}px">${blocks.map(b=>`<div class="blk">${b}</div>`).join('')}</div>`;return ms.firstElementChild};
+      let el=probe(iw),z=1;
+      if(el.scrollWidth>iw+1){z=iw/el.scrollWidth;el=probe(iw/z)}
+      const kids=[...el.children],hs=kids.map((k,i)=>((i<kids.length-1?kids[i+1].offsetTop:el.scrollHeight)-k.offsetTop)*z);
+      const hHead=hs[0],pages=[];let cur=[0],used=hHead;
+      for(let i=1;i<blocks.length;i++){
+        if(used+hs[i]>ih&&cur.length>1){pages.push(cur);cur=C.rep?[0]:[];used=C.rep?hHead:0}
+        cur.push(i);used+=hs[i];
+      }
+      pages.push(cur);
+      pages.forEach(pg=>sheets.push(Object.assign({},base,{z,over:pg.some(i=>hs[i]>ih),html:`<div class="paper port sheetc" style="zoom:${z.toFixed(4)};width:${(iw/z).toFixed(1)}px;font-size:${fs}px;--bw:${bwz(z,C)}">${pg.map(i=>`<div class="blk">${blocks[i]}</div>`).join('')}</div>`})));
+    }
+  });
+  ms.innerHTML='';
+  lastSheets=sheets;
+  $('desk').innerHTML=`<div class="sheets" id="sheets">${sheets.map((s,i)=>`<div class="sheet${s.hi?'':' nohi'}" style="width:${(s.W*MM).toFixed(1)}px;height:${(s.H*MM).toFixed(1)}px;padding:${s.pad[0]}mm ${s.pad[1]}mm ${s.pad[2]}mm ${s.pad[3]}mm">${s.html}${s.over?'<div class="over">เนื้อหาล้นหน้ากระดาษ — ลดขนาดหรือขอบ</div>':''}<div class="pno">${DOCN[s.key]} · ${s.paper} ${s.o==='L'?'แนวนอน':'แนวตั้ง'} · หน้า ${i+1}/${sheets.length}</div></div>`).join('')}</div>`;
+  const cnt={};sheets.forEach(s=>cnt[s.key]=(cnt[s.key]||0)+1);
+  $('pinfo').textContent=`พิมพ์ทั้งหมด ${sheets.length} หน้า (`+Object.entries(cnt).map(([k,n])=>`${DOCN[k]} ${n}`).join(' · ')+')';
+  const P=pset(),C=cfg(P.who),sumS=sheets.find(s=>s.key==='sum');
+  $('psWhoInfo').textContent=`${C.paper} ${C.o==='L'?'แนวนอน':'แนวตั้ง'} · ขอบ บน ${margins(C)[0]} ล่าง ${margins(C)[2]} ซ้าย ${margins(C)[3]} ขวา ${margins(C)[1]} มม.`+(P.who==='sum'&&sumS?` · ย่อเหลือ ${Math.round(sumS.z*100)}%`:'')+(cnt[P.who]?'':' · (เอกสารนี้ไม่ได้อยู่ในชุดที่แสดง)');
+  fitView();
+}
+function fitView(){
+  const sh=$('sheets');if(!sh)return;const P=pset();
+  sh.style.zoom=1;
+  const maxW=Math.max(...[...sh.children].map(c=>c.offsetWidth));
+  const avail=$('desk').clientWidth-40;
+  sh.style.zoom=P.view==='fit'?Math.min(1,avail/maxW).toFixed(3):(parseFloat(P.view)/100);
+}
+window.addEventListener('resize',()=>{if(!$('docView').hidden)fitView()});
+
+/* ---- signatories ---- */
+function renderSign(){
+  $('sigBody').innerHTML=(S.sign||[]).map((s,i)=>`<tr data-s="${i}">
+   <td><input id="sr${i}" data-sk="role" value="${esc(s.role)}"></td><td><input id="sn${i}" data-sk="name" value="${esc(s.name)}"></td>
+   <td><input id="sp${i}" data-sk="pos" value="${esc(s.pos)}"></td><td><button type="button" class="x" data-sdel="${i}" aria-label="ลบผู้ลงนาม">✕</button></td></tr>`).join('');
+}
+
+function renderAlerts(list){
+  const n={e:0,w:0,i:0};list.forEach(a=>n[a.lv]++);
+  const st=n.e?['var(--err)',`พบข้อผิดพลาด ${n.e} จุด ต้องแก้ก่อนเสนอลงนาม`]:n.w?['var(--warn)','ตัวเลขถูกต้อง มีข้อควรตรวจสอบ']:['var(--ok)','ตรวจผ่านทั้งหมด'];
+  const order={e:0,w:1,i:2};list.sort((a,b)=>order[a.lv]-order[b.lv]);
+  const lvT={e:'ผิดพลาด',w:'ควรตรวจ',i:'ข้อสังเกต'};
+  const shown=list.filter(a=>filt[a.lv]);
+  $('alerts').innerHTML=`<div class="alerts-head"><div class="status"><span class="dot" style="background:${st[0]}"></span>${st[1]}</div>
+   <div class="chips">${['e','w','i'].map(k=>`<button type="button" class="chip ${k}" data-f="${k}" aria-pressed="${filt[k]}">${lvT[k]} ${n[k]}</button>`).join('')}</div></div>
+   ${list.length?`<ul class="alist">${shown.map(a=>`<li><span class="lv ${a.lv}">${lvT[a.lv]}</span><div><span class="where">${a.row!==undefined?`<a href="#row${a.row}" data-go="${a.row}">${esc(a.where)}</a>`:esc(a.where)}</span> — ${esc(a.msg)}<div class="fix">${esc(a.fix)}</div></div></li>`).join('')}</ul>`:'<div class="allok">ไม่พบข้อผิดพลาด ตัวเลขทุกยอดตรงกัน</div>'}`;
+}
+
+/* ---- bind ---- */
+const HF=['no','date','round','contractor','project','loc','value','start','end','days','penrate','pendoc','remark','reasonInc','reasonDec'];
+const RF=['under','lim1','lim2','pay2','pay3'];
+function fillForm(){HF.forEach(k=>$('h_'+k).value=S.h[k]??'');RF.forEach(k=>$('r_'+k).value=S.r[k]??'');$('r_waive').checked=!!S.r.waive;$('cmp').innerHTML='';renderTable();renderSign();fillPS();update()}
+$('sigBody').addEventListener('input',e=>{const k=e.target.dataset.sk;if(!k)return;S.sign[+e.target.closest('tr').dataset.s][k]=e.target.value;update()});
+$('sigBody').addEventListener('click',e=>{const d=e.target.closest('[data-sdel]');if(!d)return;S.sign.splice(+d.dataset.sdel,1);renderSign();update()});
+$('bAddSig').addEventListener('click',()=>{S.sign.push({role:'กรรมการฯ',name:'',pos:''});renderSign();update();$('sn'+(S.sign.length-1)).focus()});
+function setTab(doc){$('tabCalc').setAttribute('aria-selected',!doc);$('tabDoc').setAttribute('aria-selected',doc);
+  $('docView').hidden=!doc;document.querySelectorAll('.calc-only').forEach(el=>el.hidden=doc);if(doc)renderDoc();
+  try{localStorage.setItem(KEY+'-tab',doc?'doc':'calc')}catch(e){}}
+const PSK=['paper','o','mt','mb','ml','mr','scale','font','bw'];
+function fillPS(){const P=pset(),C=cfg(P.who);
+  PSK.forEach(k=>{$('ps_'+k).value=C[k]});$('ps_rep').checked=!!C.rep;$('ps_hi').checked=!!C.hi;$('ps_view').value=P.view;
+  const isSum=P.who==='sum';$('lbScale').hidden=!isSum;$('lbFont').hidden=isSum;$('lbRep').hidden=isSum;
+  $('psWho').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.who===P.who));}
+PSK.forEach(k=>{const el=$('ps_'+k);el.addEventListener(el.tagName==='SELECT'?'change':'input',()=>{cfg(pset().who)[k]=el.value;renderDoc();save()})});
+['rep','hi'].forEach(k=>$('ps_'+k).addEventListener('change',e=>{cfg(pset().who)[k]=e.target.checked;renderDoc();save()}));
+$('ps_view').addEventListener('change',e=>{pset().view=e.target.value;fitView();save()});
+$('psWho').addEventListener('click',e=>{const b=e.target.closest('[data-who]');if(!b)return;pset().who=b.dataset.who;fillPS();renderDoc();save()});
+$('bPReset').addEventListener('click',()=>{const P=pset();P.sets[P.who]=Object.assign({},PDEFS[P.who]);fillPS();renderDoc();save();toast('คืนค่าเริ่มต้นของ'+DOCN[P.who]+'แล้ว')});
+$('bPAll').addEventListener('click',()=>{const P=pset(),C=cfg(P.who);
+  ['sum','inc','dec'].forEach(k=>{if(k===P.who)return;Object.assign(P.sets[k],{paper:C.paper,mt:C.mt,mb:C.mb,ml:C.ml,mr:C.mr,bw:C.bw,hi:C.hi});
+    if(P.who!=='sum'&&k!=='sum')Object.assign(P.sets[k],{o:C.o,font:C.font,rep:C.rep})});
+  renderDoc();save();toast('ใช้ขนาดกระดาษ ขอบ และเส้นตารางเดียวกันทุกเอกสารแล้ว (แนวกระดาษของบัญชีสรุปคงเดิม)')});
+$('tabCalc').addEventListener('click',()=>setTab(false));
+$('tabDoc').addEventListener('click',()=>setTab(true));
+$('docPick').addEventListener('click',e=>{const b=e.target.closest('[data-page]');if(!b)return;docPage=b.dataset.page;
+  const w={summary:'sum',inc:'inc',dec:'dec'}[docPage];if(w){pset().who=w;fillPS()}
+  $('docPick').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));renderDoc()});
+const INL=['border-top','border-right','border-bottom','border-left','text-align','font-weight','font-size','font-family','padding','background-color','color','vertical-align','white-space','text-decoration'];
+$('bCopyDoc').addEventListener('click',()=>{
+  const src=$('desk');const clone=src.cloneNode(true);
+  const a=src.querySelectorAll('*'),b=clone.querySelectorAll('*');
+  a.forEach((el,i)=>{const cs=getComputedStyle(el);b[i].setAttribute('style',(b[i].getAttribute('style')||'')+';'+INL.map(p=>p+':'+cs.getPropertyValue(p)).join(';'))});
+  // convert grid rows to tables so Word keeps the columns
+  clone.querySelectorAll('.d-row,.p-head,.p-sum .l,.p-sum .rr,.signs,.d-item .hd').forEach(g=>{
+    const t=document.createElement('table');t.setAttribute('style','border-collapse:collapse;width:100%;font-family:Sarabun,TH SarabunPSK,sans-serif');
+    const cols=g.classList.contains('signs')?(g.classList.contains('one')?1:4):g.classList.contains('p-head')?3:g.matches('.p-sum .l, .p-sum .rr')?4:g.classList.contains('hd')?3:10;
+    let tr;[...g.children].forEach((c,i)=>{if(i%cols===0){tr=document.createElement('tr');t.appendChild(tr)}const td=document.createElement('td');td.innerHTML=c.innerHTML;td.setAttribute('style',c.getAttribute('style')||'');tr.appendChild(td)});
+    g.replaceWith(t)});
+  const html='<meta charset="utf-8">'+[...clone.children].map(p=>p.outerHTML).join('<br style="page-break-before:always">');
+  const text=src.innerText;
+  try{navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}),'text/plain':new Blob([text],{type:'text/plain'})})]).then(()=>toast('คัดลอกเอกสารแล้ว วางใน Word หรือ Excel ได้เลย'),()=>selDoc())}catch(e){selDoc()}});
+let dl=null;
+try{window.claude&&window.claude.use&&window.claude.use('downloads').then(x=>{dl=x}).catch(()=>{})}catch(e){}
+$('bPrint').addEventListener('click',async()=>{
+  renderDoc();
+  const css=[...document.querySelectorAll('style')].map(s=>s.textContent).join('\n');
+  const pn=s=>'p'+String(s.W).replace('.','_')+'x'+String(s.H).replace('.','_');
+  const dims={};lastSheets.forEach(s=>{dims[pn(s)]=[s.W,s.H]});
+  const pageCss=Object.entries(dims).map(([n,[w,h]])=>`@page ${n}{size:${w}mm ${h}mm;margin:0}`).join('\n');
+  const body=lastSheets.map(s=>`<div class="sheet${s.hi?'':' nohi'}" style="page:${pn(s)};width:${s.W}mm;height:${s.H-0.6}mm;padding:${s.pad[0]}mm ${s.pad[1]}mm ${s.pad[2]}mm ${s.pad[3]}mm">${s.html}</div>`).join('');
+  const first=lastSheets[0]||{W:210,H:297};
+  const file=`<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ถัวจ่ายครั้งที่ ${esc(S.h.round)} ${esc(S.h.no)}</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap">
+<style>${css}
+html,body{background:#d9dcd8!important;color:#000;margin:0;padding:0}
+.bar{font-family:Sarabun,sans-serif;font-size:15px;background:#1f5c4a;color:#fff;padding:10px 16px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;position:sticky;top:0;z-index:5}
+.bar button{font:inherit;background:#fff;color:#1f5c4a;border:0;border-radius:6px;padding:6px 16px;font-weight:700;cursor:pointer}
+.sheets{padding:20px 0}
+@page{size:${first.W}mm ${first.H}mm;margin:0}
+${pageCss}
+@media print{
+  html,body{background:#fff!important}
+  .bar{display:none}
+  .sheets{padding:0;gap:0;display:block;width:auto}
+  .sheet{box-shadow:none;break-after:page;margin:0}
+  .sheet:last-child{break-after:auto}
+  .sheet,.sheet *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style></head><body>
+<div class="bar"><span>เอกสารพร้อมพิมพ์ ${lastSheets.length} หน้า — ในหน้าต่างพิมพ์ ให้ตั้ง <b>ระยะขอบ: ค่าเริ่มต้น</b> และ <b>ขนาด: ค่าเริ่มต้น (100)</b></span><button onclick="window.print()">🖨 พิมพ์</button></div>
+<div class="sheets">${body}</div>
+<script>(document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve()).then(function(){setTimeout(function(){window.print()},500)});<\/script>
+</body></html>`;
+  if(!dl){const w=window.open('','_blank');if(!w){saveFile(`ถัวจ่าย_${fileTag(S)}.html`,file,'text/html');return}
+    w.document.open();w.document.write(file);w.document.close();return}
+  try{await dl.save({filename:`ถัวจ่ายครั้งที่${(S.h.round||'1')}_${String(S.h.no||'').replace(/[\/\\:*?"<>|]/g,'-').replace(/\s+/g,'')}.html`,data:file});
+    toast('บันทึกไฟล์แล้ว เปิดไฟล์ในเบราว์เซอร์ หน้าต่างพิมพ์จะขึ้นเอง')}
+  catch(e){const c=e&&e.code;toast(c==='declined'?'ยกเลิกการบันทึกไฟล์':c==='rate_limited'?'มีหน้าต่างยืนยันค้างอยู่ ลองอีกครั้งสักครู่':'บันทึกไฟล์ไม่ได้ในมุมมองนี้')}
+});
+function selDoc(){const r=document.createRange();r.selectNodeContents($('desk'));const s=getSelection();s.removeAllRanges();s.addRange(r);toast('เลือกเอกสารไว้แล้ว กด Ctrl+C เพื่อคัดลอก')}
+HF.forEach(k=>$('h_'+k).addEventListener('input',e=>{S.h[k]=e.target.value;update();if(['no','round','project','contractor'].includes(k))setHeadLabel()}));
+RF.forEach(k=>$('r_'+k).addEventListener('input',e=>{S.r[k]=e.target.value;update()}));
+$('r_waive').addEventListener('change',e=>{S.r.waive=e.target.checked;update()});
+$('tb').addEventListener('input',e=>{const k=e.target.dataset.k;if(!k)return;const i=+e.target.closest('tr').dataset.i;S.items[i][k]=e.target.value;update()});
+$('tb').addEventListener('blur',e=>{const k=e.target.dataset.k;if(!['price','cq','aq'].includes(k))return;const n=parse(e.target.value);if(!isNaN(n)){const i=+e.target.closest('tr').dataset.i;const s=fm(n,k==='price'?2:3);e.target.value=s;S.items[i][k]=s;update()}},true);
+$('tb').addEventListener('click',e=>{const d=e.target.closest('[data-del]');if(!d)return;const i=+d.dataset.del;
+  if(d.dataset.arm!=='1'){d.dataset.arm='1';d.textContent='ลบ?';d.style.color='var(--err)';setTimeout(()=>{if(d.isConnected){d.dataset.arm='';d.textContent='✕';d.style.color=''}},2500);return}
+  S.items.splice(i,1);renderTable();update();toast('ลบรายการที่ '+(i+1)+' แล้ว')});
+$('cmp').addEventListener('input',e=>{const k=e.target.dataset.doc;if(!k)return;S.doc[k]=e.target.value;update()});
+$('bAdd').addEventListener('click',()=>{S.items.push({desc:'',unit:'',price:'',cq:'0',aq:'0',note:''});renderTable();update();$('d'+(S.items.length-1)).focus()});
+$('alerts').addEventListener('click',e=>{const f=e.target.closest('[data-f]');if(f){filt[f.dataset.f]=!filt[f.dataset.f];update();return}
+  const g=e.target.closest('[data-go]');if(g){e.preventDefault();const tr=$('row'+g.dataset.go);if(tr){tr.scrollIntoView({behavior:'smooth',block:'center'});tr.classList.remove('flash');void tr.offsetWidth;tr.classList.add('flash')}}});
+$('bIO').addEventListener('click',()=>{$('ioPanel').hidden=!$('ioPanel').hidden});
+function copy(text,ok){const done=()=>toast(ok);try{navigator.clipboard.writeText(text).then(done,()=>fallback(text))}catch(e){fallback(text)}}
+function fallback(text){$('ioPanel').hidden=false;$('io').value=text;$('io').select();toast('คัดลอกอัตโนมัติไม่ได้ ข้อความถูกเลือกไว้แล้ว กด Ctrl+C')}
+$('bExport').addEventListener('click',()=>copy(JSON.stringify(S),'คัดลอกข้อมูลแล้ว นำไปวางเก็บในไฟล์ .txt ได้'));
+function importText(t){try{const o=JSON.parse(t);if(!o.h||!o.r||!Array.isArray(o.items))throw 0;S=migrate(o);delete S.meta;fillForm();toast('เปิดข้อมูลแล้ว')}catch(e){toast('ข้อความไม่ใช่ข้อมูลถัวจ่ายของโครงการเดียว (ไฟล์สำรองทั้งหมดให้นำเข้าที่หน้าสรุปโครงการ)')}}
+$('bSaveFile').addEventListener('click',()=>saveFile(`ถัวจ่าย_${fileTag(S)}.json`,JSON.stringify(S,null,1),'application/json'));
+$('bImport').addEventListener('click',()=>importText($('io').value));
+$('fileIn').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>importText(r.result);r.readAsText(f)});
+$('bCopy').addEventListener('click',()=>{const R=rules();
+  const head=['ลำดับ','รายการ','หน่วย','ราคาต่อหน่วย','ปริมาณสัญญา','จำนวนเงินสัญญา','ปริมาณในสนาม','คิดเป็น %','ปริมาณช่วง1','ปริมาณช่วง2','ราคาช่วง2','ปริมาณช่วง3','ราคาช่วง3','ค่างานตามจริง','±ปริมาณ','±จำนวนเงิน','หมายเหตุ'];
+  const lines=[head.join('\t')];
+  S.items.forEach((it,i)=>{const o=calcItem(it,R);if(!o.valid){lines.push([i+1,it.desc,it.unit,it.price,it.cq,'',it.aq].join('\t'));return}
+    lines.push([i+1,it.desc,it.unit,o.p.toFixed(2),o.c,o.ca.toFixed(2),o.a,o.pct===null?'':o.pct.toFixed(3),o.q1,o.q2,o.q2?o.p2.toFixed(2):'',o.q3,o.q3?o.p3.toFixed(2):'',o.aa.toFixed(2),o.dq,o.d.toFixed(2),it.note].join('\t'))});
+  copy(lines.join('\n'),'คัดลอกตารางแล้ว วางใน Excel ได้เลย')});
+let tt;function toast(m){const t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,2800)}
+
+/* ---- projects / home ---- */
+function blankData(){const d=clone(SAMPLE);
+  d.h={no:'',date:'',round:'1',contractor:'',project:'',loc:'',value:'',start:'',end:'',days:'',penrate:'0.25',pendoc:'',remark:'',reasonInc:SAMPLE.h.reasonInc,reasonDec:SAMPLE.h.reasonDec};
+  d.items=[{desc:'',unit:'',price:'',cq:'0',aq:'0',note:''}];d.doc={};delete d.print;return d}
+function fileTag(d){return ('ครั้งที่'+((d.h&&d.h.round)||'1')+'_'+String((d.h&&d.h.no)||'ไม่มีเลขสัญญา')).replace(/[\/\\:*?"<>|]/g,'-').replace(/\s+/g,'')}
+function quick(d){
+  const rr=d.r||{},R={under:parse(rr.under),lim1:parse(rr.lim1),lim2:parse(rr.lim2),pay2:parse(rr.pay2),pay3:parse(rr.pay3)};
+  let tCA=0,tAA=0,inc=0,dec=0,bad=0;
+  (d.items||[]).forEach(it=>{const o=calcItem(it,R);if(!o.valid){bad++;return}tCA+=o.ca;tAA+=o.aa;if(o.d>0.004)inc+=o.d;else if(o.d<-0.004)dec-=o.d});
+  const val=parse(d.h&&d.h.value);
+  return {tCA:r2(tCA),tAA:r2(tAA),inc:r2(inc),dec:r2(dec),val:isNaN(val)?null:val,rem:isNaN(val)?null:r2(val-tAA),bad}}
+function projStat(d){const m=d.meta;
+  if(!m)return['n','ยังไม่ได้ตรวจ'];
+  return m.e?['e','ผิดพลาด '+m.e]:m.w?['w','ควรตรวจ '+m.w]:['ok','ผ่าน']}
+const fmD=t=>{if(!t)return'';const d=new Date(t);return d.getDate()+' '+TM[d.getMonth()].slice(0,3)+'. '+String(d.getFullYear()+543).slice(2)+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
+let delArm=null;
+function renderHome(){
+  const q=($('hSearch').value||'').trim().toLowerCase();
+  const list=DB.projects.slice().sort((a,b)=>(b.updated||0)-(a.updated||0));
+  const latest={};list.forEach(p=>{const h=p.data.h||{},k=(h.no||'').trim()||p.id,r=parseInt(h.round)||1;if(!latest[k]||r>latest[k].r)latest[k]={r,p}});
+  let sV=0,sA=0,nE=0;const nC=Object.keys(latest).length;
+  Object.values(latest).forEach(({p})=>{const t=quick(p.data);sV+=t.val??t.tCA;sA+=t.tAA;if(projStat(p.data)[0]==='e')nE++});
+  const rows=list.map(p=>{const d=p.data,t=quick(d),st=projStat(d);
+    const h=d.h||{},txt=[h.no,h.project,h.contractor,h.loc].join(' ').toLowerCase();
+    if(q&&!txt.includes(q))return'';
+    const over=t.val!==null&&t.tAA-t.val>0.004;
+    return `<tr class="prow" data-open="${p.id}">
+      <td><div class="nm">${esc(h.no)||'<span class="sm">(ยังไม่ใส่เลขสัญญา)</span>'}</div><div class="sm">${esc(h.date)}</div></td>
+      <td style="min-width:280px"><div class="nm">${esc(h.project)||'<span class="sm">(ยังไม่ใส่ชื่องาน)</span>'}</div><div class="sm">${esc(h.contractor)}${h.loc?' · '+esc(h.loc):''}</div></td>
+      <td style="text-align:center"><span class="rnd">${esc(h.round||'1')}</span></td>
+      <td class="r">${t.val!==null?fm(t.val):'–'}</td>
+      <td class="r"><b>${fm(t.tAA)}</b><div class="sm">+${fm(t.inc)} / −${fm(t.dec)}</div></td>
+      <td class="r" style="${over?'color:var(--err);font-weight:700':''}">${t.rem!==null?fm(t.rem):'–'}</td>
+      <td class="sm">${h.end?esc(thDate(h.end)):'–'}</td>
+      <td><span class="pill ${st[0]}">${st[1]}</span>${t.bad?`<div class="sm" style="color:var(--err)">ข้อมูลไม่ครบ ${t.bad} รายการ</div>`:''}</td>
+      <td class="sm">${fmD(p.updated)}</td>
+      <td><div class="acts">
+        <button type="button" data-copy="${p.id}" title="ทำสำเนาเป็นถัวจ่ายครั้งถัดไป">สำเนาเป็นครั้งที่ ${(parseInt(h.round)||1)+1}</button>
+        <button type="button" data-del="${p.id}" class="danger" aria-label="ลบโครงการ">${delArm===p.id?'ยืนยันลบ':'ลบ'}</button></div></td></tr>`}).join('');
+  $('kpis').innerHTML=`
+    <div class="kpi"><span class="k">จำนวนสัญญา</span><span class="v">${nC}</span><span class="s">รวมการถัวจ่าย ${list.length} ครั้ง</span></div>
+    <div class="kpi"><span class="k">ค่าก่อสร้างตามสัญญารวม</span><span class="v">${fm(sV)}</span><span class="s">บาท</span></div>
+    <div class="kpi"><span class="k">ค่างานหลังถัวจ่ายรวม</span><span class="v">${fm(r2(sA))}</span><span class="s">คงเหลือรวม ${fm(r2(sV-sA))} บาท</span></div>
+    <div class="kpi ${nE?'alert':''}"><span class="k">โครงการที่ต้องแก้</span><span class="v">${nE}</span><span class="s">${nE?'มีข้อผิดพลาดก่อนเสนอลงนาม':'ไม่มีข้อผิดพลาด'}</span></div>
+    <div class="kpi-note">ยอดรวมนับสัญญาละครั้งเดียว ใช้การถัวจ่ายครั้งล่าสุดของแต่ละสัญญา</div>`;
+  $('ptbl').innerHTML=list.length?`<thead><tr><th>สัญญาเลขที่</th><th>ชื่องาน / ผู้รับจ้าง</th><th style="text-align:center">ครั้งที่</th><th style="text-align:right">ค่าก่อสร้างตามสัญญา</th><th style="text-align:right">หลังถัวจ่าย (+เพิ่ม/−ลด)</th><th style="text-align:right">คงเหลือ</th><th>สิ้นสุดสัญญา</th><th>สถานะ</th><th>แก้ไขล่าสุด</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="10" class="sm" style="text-align:center;padding:20px">ไม่พบโครงการที่ค้นหา</td></tr>'}</tbody>`
+    :`<tbody><tr><td><div class="empty">ยังไม่มีโครงการ กด "+ เพิ่มโครงการ" เพื่อเริ่มกรอกถัวจ่ายงานแรก</div></td></tr></tbody>`;
+  $('homeNote').textContent='สถานะมาจากการตรวจครั้งล่าสุดที่เปิดโครงการ · ข้อมูลทุกโครงการเก็บในเบราว์เซอร์/เครื่องนี้ ควรกด "สำรองข้อมูลทั้งหมด" เป็นระยะ หรือก่อนล้างข้อมูลเบราว์เซอร์';
+}
+function showHome(){save();DB.cur=null;writeDB();S=null;lastJSON='';
+  $('homeView').hidden=false;$('projView').hidden=true;$('bHome').hidden=true;
+  document.querySelectorAll('.proj-only').forEach(e=>e.hidden=true);document.querySelectorAll('.home-only').forEach(e=>e.hidden=false);
+  $('hTitle').textContent='ระบบคำนวณถัวจ่าย';document.querySelector('.top').classList.add('hero');$('hSub').textContent='หน้าสรุปโครงการ · คำนวณ ตรวจความถูกต้อง และพิมพ์เอกสารถัวจ่ายงานก่อสร้าง';
+  delArm=null;renderHome();window.scrollTo(0,0)}
+function openProject(id){const p=DB.projects.find(x=>x.id===id);if(!p)return showHome();
+  DB.cur=id;writeDB();S=migrate(clone(p.data));lastJSON=JSON.stringify(p.data);
+  $('homeView').hidden=true;$('projView').hidden=false;$('bHome').hidden=false;document.querySelector('.top').classList.remove('hero');
+  document.querySelectorAll('.proj-only').forEach(e=>e.hidden=false);document.querySelectorAll('.home-only').forEach(e=>e.hidden=true);
+  setHeadLabel();fillForm();
+  let tab='calc';try{tab=localStorage.getItem(KEY+'-tab')||'calc'}catch(e){}setTab(tab==='doc');window.scrollTo(0,0)}
+function setHeadLabel(){if(!S)return;const h=S.h;$('hTitle').textContent=(h.no?'สัญญา '+h.no:'โครงการใหม่')+' · ถัวจ่ายครั้งที่ '+(h.round||'1');
+  $('hSub').textContent=h.project?h.project+(h.contractor?' · '+h.contractor:''):'กรอกข้อมูลสัญญาในหัวข้อ 1'}
+function addProject(d){const now=Date.now(),p={id:uid(),created:now,updated:now,data:d};DB.projects.push(p);writeDB();return p}
+$('bHome').addEventListener('click',showHome);
+$('bNew').addEventListener('click',()=>{const p=addProject(blankData());try{localStorage.setItem(KEY+'-tab','calc')}catch(e){}openProject(p.id);toast('เพิ่มโครงการใหม่แล้ว เริ่มกรอกข้อมูลสัญญาได้เลย')});
+$('bSample').addEventListener('click',()=>{addProject(clone(SAMPLE));renderHome();toast('เพิ่มโครงการตัวอย่าง (สัญญา กบ1. 29/2569) แล้ว')});
+$('hSearch').addEventListener('input',renderHome);
+$('ptbl').addEventListener('click',e=>{
+  const c=e.target.closest('[data-copy]'),d=e.target.closest('[data-del]');
+  if(c){e.stopPropagation();const src=DB.projects.find(x=>x.id===c.dataset.copy);if(!src)return;const nd=clone(src.data);
+    nd.h.round=String((parseInt(nd.h.round)||1)+1);nd.doc={};delete nd.meta;const p=addProject(nd);renderHome();toast('สร้างถัวจ่ายครั้งที่ '+nd.h.round+' แล้ว แก้ปริมาณในสนามได้เลย');openProject(p.id);return}
+  if(d){e.stopPropagation();const id=d.dataset.del;
+    if(delArm!==id){delArm=id;renderHome();setTimeout(()=>{if(delArm===id){delArm=null;if(!$('homeView').hidden)renderHome()}},3000);return}
+    DB.projects=DB.projects.filter(x=>x.id!==id);delArm=null;writeDB();renderHome();toast('ลบโครงการแล้ว');return}
+  const r=e.target.closest('[data-open]');if(r)openProject(r.dataset.open)});
+function stamp(){const d=new Date();return (d.getFullYear()+543)+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')}
+$('bBackup').addEventListener('click',()=>saveFile(`ถัวจ่าย_สำรองทั้งหมด_${stamp()}.json`,JSON.stringify({app:'thuajai',v:1,exported:Date.now(),projects:DB.projects},null,1),'application/json'));
+$('hImport').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{e.target.value='';try{const o=JSON.parse(r.result);let added=0,upd=0;
+    if(o&&Array.isArray(o.projects)){o.projects.forEach(p=>{if(!p||!p.data||!p.data.h)return;const ex=DB.projects.find(x=>x.id===p.id);
+        if(!ex){DB.projects.push(Object.assign({},p,{data:migrate(p.data)}));added++}else if((p.updated||0)>(ex.updated||0)){ex.data=migrate(p.data);ex.updated=p.updated;upd++}})}
+    else if(o&&o.h&&o.r&&Array.isArray(o.items)){addProject(migrate(o));added++}
+    else throw 0;
+    writeDB();renderHome();toast(`นำเข้าแล้ว: เพิ่ม ${added} โครงการ`+(upd?` · อัปเดต ${upd} โครงการ`:''))}
+  catch(err){toast('ไฟล์นี้ไม่ใช่ข้อมูลจากระบบคำนวณถัวจ่าย')}};r.readAsText(f)});
+
+/* ---- file save + print, artifact or installed app ---- */
+function saveFile(name,data,type){
+  if(dl){dl.save({filename:name,data}).then(()=>toast('บันทึกไฟล์แล้ว'),e=>{const c=e&&e.code;toast(c==='declined'?'ยกเลิกการบันทึกไฟล์':'บันทึกไฟล์ไม่ได้ในมุมมองนี้')});return}
+  try{const b=new Blob([data],{type:type||'application/octet-stream'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>a.remove(),1000);setTimeout(()=>URL.revokeObjectURL(u),4000);toast('บันทึกไฟล์แล้ว')}
+  catch(e){toast('บันทึกไฟล์ไม่ได้')}}
+let deferredInstall=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;$('bInstall').hidden=false});
+$('bInstall').addEventListener('click',async()=>{if(!deferredInstall)return;deferredInstall.prompt();try{await deferredInstall.userChoice}catch(e){}deferredInstall=null;$('bInstall').hidden=true});
+/* ---- Excel export (formulas) ---- */
+const XLSX_LIB='https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
+function loadScript(src){return new Promise((res,rej)=>{if(window.ExcelJS)return res();const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error('load'));document.head.appendChild(s)})}
+const XPAPER={A4:9,A3:8,Letter:1,Legal:5,F4:14};
+async function exportXlsx(){
+  if(!S)return;
+  const btn=$('bXlsx'),old=btn.textContent;btn.disabled=true;btn.textContent='กำลังสร้างไฟล์ Excel…';
+  try{await loadScript(XLSX_LIB)}catch(e){btn.disabled=false;btn.textContent=old;toast('โหลดตัวสร้าง Excel ไม่ได้ ต้องต่ออินเทอร์เน็ตครั้งแรก');return}
+  try{
+  const X=window.ExcelJS,wb=new X.Workbook();
+  wb.creator='ระบบคำนวณถัวจ่าย · Miss Narama Woraklan';wb.created=new Date();wb.calcProperties.fullCalcOnLoad=true;
+  const R=rules(),h=S.h,FONT='TH SarabunPSK',BLUE='FF1F3FBF';
+  const thin={style:'thin',color:{argb:'FF000000'}};
+  const box={top:thin,left:thin,bottom:thin,right:thin};
+  const NM='#,##0.00;-#,##0.00;"-"',NQ='#,##0.000;-#,##0.000;"-"',NP='0.000;-0.000;"-"';
+  const num=v=>{const n=parse(v);return isNaN(n)?(String(v||'').trim()===''?0:String(v)):n};
+  const F=(f,r)=>({formula:f,result:r});
+  const st=(c,o)=>{if(o.font)c.font=Object.assign({name:FONT,size:14},o.font);else c.font={name:FONT,size:14};if(o.nf)c.numFmt=o.nf;if(o.al)c.alignment=o.al;if(o.b)c.border=o.b;if(o.fill)c.fill={type:'pattern',pattern:'solid',fgColor:{argb:o.fill}};return c};
+  const setup=(ws,key,fitH)=>{const P=pset(),C=P.sets[key],[mt,mr,mb,ml]=margins(C);
+    ws.pageSetup=Object.assign(ws.pageSetup||{},{paperSize:XPAPER[C.paper]||9,orientation:C.o==='L'?'landscape':'portrait',fitToPage:true,fitToWidth:1,fitToHeight:fitH?1:0,
+      margins:{left:ml/25.4,right:mr/25.4,top:mt/25.4,bottom:mb/25.4,header:0.2,footer:0.2},horizontalCentered:key==='sum'})};
+
+  /* sheet 1: contract data + rules (inputs) */
+  const w1=wb.addWorksheet('ข้อมูลสัญญา',{properties:{tabColor:{argb:'FF1F5C4A'}}});
+  w1.columns=[{width:3},{width:34},{width:46},{width:40}];
+  st(w1.getCell('B1'),{font:{size:20,bold:true}}).value='ข้อมูลสัญญาและเกณฑ์ถัวจ่าย';
+  st(w1.getCell('B2'),{font:{size:13,color:{argb:'FF5D6560'}}}).value='ตัวเลขสีน้ำเงิน = ช่องที่แก้ได้ · ช่องอื่นเป็นสูตร แก้ที่นี่แล้วทุกแผ่นงานคำนวณใหม่เอง';
+  const sd=v=>{if(!v)return '';const [y,m,d]=v.split('-').map(Number);return new Date(Date.UTC(y,m-1,d))};
+  const rows1=[
+    [3,'สัญญาเลขที่',h.no,'t'],[4,'ลงวันที่',h.date,'t'],[5,'ถัวจ่ายครั้งที่',num(h.round),'n0'],[6,'ผู้รับจ้าง',h.contractor,'t'],
+    [7,'ชื่องาน',h.project,'t'],[8,'สถานที่ / ทางหลวง',h.loc,'t'],[9,'ค่าก่อสร้างตามสัญญา (บาท)',num(h.value),'m'],
+    [10,'วันเริ่มต้นสัญญา',sd(h.start),'d'],[11,'วันสิ้นสุดสัญญา',sd(h.end),'d'],[12,'เวลาทำการตามสัญญา (วัน)',num(h.days),'n0'],
+    [13,'อัตราค่าปรับ (% ของค่างานต่อวัน)',num(h.penrate),'p'],
+    [17,'Underrun ต่ำกว่า (% ของปริมาณสัญญา)',num(S.r.under),'p'],[18,'จ่ายราคาเต็มไม่เกิน (%)',num(S.r.lim1),'p'],
+    [19,'ช่วงที่ 2 ไม่เกิน (%)',num(S.r.lim2),'p'],[20,'ช่วงที่ 2 จ่าย (% ของราคาต่อหน่วย)',num(S.r.pay2),'p'],[21,'ส่วนที่เกินช่วงที่ 2 จ่าย (%)',num(S.r.pay3),'p']];
+  rows1.forEach(([r,l,v,t])=>{st(w1.getCell('B'+r),{b:box}).value=l;
+    const c=st(w1.getCell('C'+r),{b:box,font:{color:{argb:BLUE},bold:true},nf:t==='m'?'#,##0.00':t==='d'?'d mmm yyyy':t==='p'?'0.00':t==='n0'?'0':undefined,al:{horizontal:t==='t'?'left':'right',wrapText:t==='t'}});c.value=v===''?null:v});
+  st(w1.getCell('B14'),{b:box}).value='ค่าปรับวันละ (บาท)';
+  st(w1.getCell('C14'),{b:box,nf:'#,##0.00',al:{horizontal:'right'}}).value=F('ROUND(C9*C13/100,2)',r2((parse(h.value)||0)*(parse(h.penrate)||0)/100));
+  st(w1.getCell('D12'),{font:{size:13}}).value=F('IF(OR(C10="",C11=""),"",IF(C11-C10+1=C12,"✓ ตรงกับช่วงวันที่","✗ นับจากวันที่ได้ "&(C11-C10+1)&" วัน"))','');
+  st(w1.getCell('B16'),{font:{size:16,bold:true}}).value='เกณฑ์ถัวจ่าย';
+  st(w1.getCell('B23'),{font:{size:13,color:{argb:'FF5D6560'}},al:{wrapText:true,vertical:'top'}}).value='หมายเหตุ: แผ่นงาน "รายการเพิ่ม" และ "รายการลด" จัดรายการตามข้อมูล ณ วันที่ส่งออก ตัวเลขเชื่อมสูตรกับบัญชีสรุป ถ้าแก้ปริมาณจนรายการเปลี่ยนจากเพิ่มเป็นลด (หรือกลับกัน) ให้ส่งออกใหม่จากโปรแกรม';
+  w1.mergeCells('B23:D23');w1.getRow(23).height=60;
+  w1.pageSetup={paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:0.6,right:0.5,top:0.6,bottom:0.6,header:0.2,footer:0.2}};
+  const P1="'ข้อมูลสัญญา'!",VAL=P1+'$C$9',RND=P1+'$C$5',UNDER=P1+'$C$17',LIM1=P1+'$C$18',LIM2=P1+'$C$19',PAY2=P1+'$C$20',PAY3=P1+'$C$21',PEN=P1+'$C$14';
+
+  /* sheet 2: summary with formulas */
+  const ws=wb.addWorksheet('บัญชีสรุป',{properties:{tabColor:{argb:'FFE2B007'}},views:[{state:'frozen',ySplit:8,xSplit:2}]});
+  const widths=[6,46,9,17,13,19,12,11,11,13,15,12,15,19,11,11,14,11,11,14,12,20,13,20,28,28];
+  ws.columns=widths.map(w=>({width:w}));ws.getColumn(27).hidden=true;
+  const L='ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  const hdr=(a,v,o={})=>{const c=st(ws.getCell(a),Object.assign({font:{bold:true,size:14}},o));c.value=v;return c};
+  hdr('A1',F(`"สัญญาเลขที่ "&${P1}C3&" ลงวันที่ "&${P1}C4`,`สัญญาเลขที่ ${h.no} ลงวันที่ ${h.date}`));ws.mergeCells('A1:F1');
+  hdr('A2','วันเริ่มต้นสัญญา '+thDate(h.start));ws.mergeCells('A2:F2');
+  hdr('A3','วันสิ้นสุดสัญญา '+thDate(h.end));ws.mergeCells('A3:F3');
+  hdr('A4',F(`"เวลาทำการ "&${P1}C12&" วัน"`,`เวลาทำการ ${h.days} วัน`));ws.mergeCells('A4:F4');
+  const ctr={horizontal:'center',vertical:'middle',wrapText:true};
+  hdr('G1',F(`"บัญชีสรุปปริมาณงานและค่างานก่อสร้างการถัวจ่ายครั้งที่ "&${RND}`,'บัญชีสรุปปริมาณงานและค่างานก่อสร้างการถัวจ่ายครั้งที่ '+h.round),{al:ctr,font:{bold:true,size:16}});ws.mergeCells('G1:T1');
+  hdr('G2',F(`${P1}C7`,h.project),{al:ctr});ws.mergeCells('G2:T2');
+  hdr('G3',F(`${P1}C8`,h.loc),{al:ctr});ws.mergeCells('G3:T3');
+  [['ผู้รับจ้าง',F(`${P1}C6`,h.contractor),null],['ค่าก่อสร้างตามสัญญา',F(VAL,parse(h.value)),NM],['ค่างานก่อสร้างในสนาม',null,NM],['ค่าปรับวันละ',F(PEN,null),NM]].forEach(([k,v,nf],i)=>{
+    hdr('U'+(i+1),k);ws.mergeCells(`U${i+1}:V${i+1}`);const c=hdr('W'+(i+1),v,{nf,al:{horizontal:'right'}});ws.mergeCells(`W${i+1}:X${i+1}`);if(nf)hdr('Y'+(i+1),'บาท')});
+  // table header rows 6-8
+  const H=[[6,8,'A','A','ลำดับ\nที่'],[6,8,'B','B','รายการ'],[6,8,'C','C','หน่วย'],[6,8,'D','D','ราคาต่อหน่วย\n(บาท)'],
+    [6,7,'E','F','งานตามสัญญา'],[6,7,'G','H','ถัวจ่ายครั้งที่ '+h.round+'\nปริมาณในสนาม'],[6,6,'I','K',`Underrun - ปริมาณ < ${R.under}%`],[7,7,'I','K','ค่างานตามจริง'],
+    [6,7,'L','N',`ปริมาณ ${R.under}% - ${R.lim1}%`],[6,7,'O','Q',`Overrun - ปริมาณ > ${R.lim1} - ${R.lim2}%`],[6,7,'R','T',`Overrun - ปริมาณ > ${R.lim2}%`],
+    [6,7,'U','V','ประมาณการค่างานก่อสร้าง'],[6,7,'W','X','เปรียบเทียบปริมาณงาน\n+ มากกว่าสัญญาเดิม\n- น้อยกว่าสัญญาเดิม'],[6,8,'Y','Y','หมายเหตุ'],[6,8,'Z','Z','หมายเหตุเพิ่มเติม\n(พิมพ์รวมในช่องหมายเหตุ)']];
+  H.forEach(([r1,r2,c1,c2,t])=>{const a=c1+r1;st(ws.getCell(a),{font:{bold:true,size:13},al:ctr,b:box}).value=t;if(a!==c2+r2)ws.mergeCells(`${a}:${c2}${r2}`)});
+  const sub={E:'ปริมาณ',F:'จำนวนเงิน\n(บาท)',G:'ปริมาณ',H:'คิดเป็น\n%',I:'ปริมาณ',J:'ราคา/\nหน่วย',K:'จำนวนเงิน\n(บาท)',L:'ปริมาณ',M:'ราคา/หน่วย',N:'จำนวนเงิน\n(บาท)',O:'ปริมาณ',P:'ราคา/หน่วย',Q:'จำนวนเงิน\n(บาท)',R:'ปริมาณ',S:'ราคา/หน่วย',T:'จำนวนเงิน\n(บาท)',U:'ปริมาณ',V:'จำนวนเงิน\n(บาท)',W:'ปริมาณ',X:'จำนวนเงิน\n(บาท)'};
+  Object.entries(sub).forEach(([c,t])=>st(ws.getCell(c+8),{font:{bold:true,size:13},al:ctr,b:box}).value=t);
+  for(let r=6;r<=8;r++)L.forEach(c=>{const cell=ws.getCell(c+r);cell.border=box});
+  ws.getRow(6).height=26;ws.getRow(7).height=52;ws.getRow(8).height=40;
+  // items
+  const R0=9,n=S.items.length,RT=R0+n,rowOf=[];
+  S.items.forEach((it,i)=>{const r=R0+i,o=calcItem(it,R);rowOf[i]=r;const v=o.valid;
+    const set=(c,val,nf,o2={})=>st(ws.getCell(c+r),Object.assign({b:box,nf,al:{horizontal:typeof val==='string'?'left':'right',vertical:'top'}},o2)).value=val;
+    set('A',i+1,null,{al:{horizontal:'center',vertical:'top'}});
+    set('B',it.desc||'',null,{al:{wrapText:true,vertical:'top'}});set('C',it.unit||'',null,{al:{horizontal:'center',vertical:'top'}});
+    set('D',num(it.price),NM,{font:{color:{argb:BLUE}}});set('E',num(it.cq),NQ,{font:{color:{argb:BLUE}}});set('G',num(it.aq),NQ,{font:{color:{argb:BLUE}}});
+    const u=v&&o.under&&!o.cancel;
+    set('F',F(`ROUND(D${r}*E${r},2)`,v?o.ca:null),NM);
+    set('H',F(`IF(E${r}=0,IF(G${r}>0,"ใหม่","-"),ROUND(G${r}/E${r}*100,3))`,v?(o.isNew?'ใหม่':o.pct):null),NP,{al:{horizontal:'right',vertical:'top'}});
+    const und=`AND(E${r}>0,G${r}<E${r}*${UNDER}/100)`,l1=`ROUND(E${r}*${LIM1}/100,3)`,l2=`ROUND(E${r}*${LIM2}/100,3)`;
+    set('I',F(`IF(${und},MIN(G${r},${l1}),0)`,u?o.q1:0),NQ);
+    set('J',F(`IF(I${r}>0,D${r},0)`,u?o.p:0),NM);
+    set('K',F(`ROUND(I${r}*D${r},2)`,u?o.a1:0),NM);
+    set('L',F(`IF(${und},0,IF(E${r}=0,G${r},MIN(G${r},${l1})))`,v&&!u?o.q1:0),NQ);
+    set('M',F(`IF(L${r}>0,D${r},0)`,v&&!u&&o.q1?o.p:0),NM);
+    set('N',F(`ROUND(L${r}*D${r},2)`,v&&!u?o.a1:0),NM);
+    set('O',F(`IF(E${r}=0,0,ROUND(MAX(0,MIN(G${r},${l2})-${l1}),3))`,v?o.q2:0),NQ);
+    set('P',F(`IF(O${r}>0,ROUND(D${r}*${PAY2}/100,2),0)`,v&&o.q2?o.p2:0),NM);
+    set('Q',F(`ROUND(O${r}*P${r},2)`,v?o.a2:0),NM);
+    set('R',F(`IF(E${r}=0,0,ROUND(MAX(0,G${r}-${l2}),3))`,v?o.q3:0),NQ);
+    set('S',F(`IF(R${r}>0,ROUND(D${r}*${PAY3}/100,2),0)`,v&&o.q3?o.p3:0),NM);
+    set('T',F(`ROUND(R${r}*S${r},2)`,v?o.a3:0),NM);
+    set('U',F(`G${r}`,v?o.a:0),NQ);
+    set('V',F(`K${r}+N${r}+Q${r}+T${r}`,v?o.aa:0),NM,{font:{bold:true}});
+    set('W',F(`G${r}-E${r}`,v?o.dq:0),NQ,{font:{bold:true}});
+    set('X',F(`ROUND(V${r}-F${r},2)`,v?o.d:0),NM,{font:{bold:true}});
+    const auto=!v?'':o.cancel?'ยกเลิกรายการ':o.q3>0?`OVERRUN > ${R.lim2} %`:o.q2>0?`OVERRUN > ${R.lim1} %`:o.under?`UNDERRUN < ${R.under} %`:o.isNew?'รายการใหม่':'';
+    set('AA',F(`IF(AND(E${r}>0,G${r}=0),"ยกเลิกรายการ",IF(R${r}>0,"OVERRUN > "&${LIM2}&" %",IF(O${r}>0,"OVERRUN > "&${LIM1}&" %",IF(I${r}>0,"UNDERRUN < "&${UNDER}&" %",IF(AND(E${r}=0,G${r}>0),"รายการใหม่","")))))`,auto),null,{b:{}});
+    const autoShown=(auto&&String(it.note||'').includes(auto))?'':auto;
+    set('Y',F(`TRIM(IF(AND(AA${r}<>"",ISNUMBER(SEARCH(AA${r},Z${r}))),"",AA${r})&" "&Z${r})`,[autoShown,it.note].filter(Boolean).join(' ')),null,{font:{size:12},al:{wrapText:true,vertical:'top'}});
+    set('Z',it.note||'',null,{font:{size:12,color:{argb:BLUE}},al:{wrapText:true,vertical:'top'}});
+    const lines=Math.max(1,Math.ceil(String(it.desc||'').length/44),Math.ceil(String(auto+' '+(it.note||'')).length/26));ws.getRow(r).height=Math.max(21,lines*19);
+  });
+  // totals
+  const rng=c=>`${c}${R0}:${c}${RT-1}`;
+  for(const c of L)st(ws.getCell(c+RT),{b:box,font:{bold:true},nf:NM,al:{horizontal:'right'}});
+  ws.getCell('B'+RT).value='รวม';ws.getCell('B'+RT).alignment={horizontal:'center'};
+  const q=quick(S);
+  [['F',q.tCA],['K',null],['N',null],['Q',null],['T',null],['V',q.tAA],['X',r2(q.tAA-q.tCA)]].forEach(([c,res])=>ws.getCell(c+RT).value=F(`SUM(${rng(c)})`,res));
+  ws.getCell('F'+RT).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFF00'}};
+  ws.getCell('W1').value=F(VAL,parse(h.value));ws.getCell('W2').value=F(VAL,parse(h.value));ws.getCell('W3').value=F('V'+RT,q.tAA);
+  ws.getCell('W2').value=F(VAL,parse(h.value));ws.getCell('W1').value=F(`${P1}C6`,h.contractor);
+  // summary block
+  const s0=RT+2,TOTA='V'+RT,TOTC='F'+RT,REM=`ROUND(${VAL}-${TOTA},2)`;
+  const txt=x=>`IF(${x}<0,"ลบ"&BAHTTEXT(-${x}),BAHTTEXT(${x}))`;
+  [[0,'ค่างานตามสัญญา',TOTC,q.tCA],[1,null,TOTA,q.tAA],[2,'ค่างานคงเหลือ',REM,q.rem]].forEach(([k,lab,ref,res])=>{const r=s0+k;
+    hdr('B'+r,lab===null?F(`"ค่างานหลังถัวจ่าย ครั้งที่ "&${RND}`,'ค่างานหลังถัวจ่าย ครั้งที่ '+h.round):lab);
+    hdr('D'+r,'เป็นเงิน');const c=hdr('E'+r,F(ref,res),{nf:'#,##0.00',al:{horizontal:'right'}});ws.mergeCells(`E${r}:F${r}`);hdr('G'+r,'บาท');
+    const t=st(ws.getCell('H'+r),{});t.value=F(`"("&${txt(ref)}&")"`,'('+bahtText(res||0)+')');ws.mergeCells(`H${r}:P${r}`)});
+  const XR=rng('X');
+  const right=[[0,'จำนวนรายการที่มีค่างาน มากกว่า สัญญาเดิม',`COUNTIF(${XR},">0.004")`,'0','รวมค่างานมากกว่าสัญญา',`SUMIF(${XR},">0.004")`],
+    [1,'จำนวนรายการที่มีค่างาน น้อยกว่า สัญญาเดิม',`COUNTIF(${XR},"<-0.004")`,'0','รวมค่างานน้อยกว่าสัญญา',`-SUMIF(${XR},"<-0.004")`],
+    [2,'','',null,'รวมเงินคงเหลือ',REM]];
+  right.forEach(([k,l1,f1,nf1,l2,f2])=>{const r=s0+k;
+    hdr('Q'+r,l1);ws.mergeCells(`Q${r}:T${r}`);if(f1)hdr('U'+r,F(f1,null),{nf:nf1,al:{horizontal:'center'}});
+    hdr('V'+r,l2);ws.mergeCells(`V${r}:W${r}`);const c=hdr('X'+r,F(f2,null),{nf:'#,##0.00',al:{horizontal:'right'}});hdr('Y'+r,'บาท');
+    if(k===2)c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFF00'}};
+    ['Q','R','S','T','U','V','W','X','Y'].forEach(col=>{const cc=ws.getCell(col+r);cc.border=Object.assign({},cc.border,{top:k===0?thin:undefined,bottom:k===2?thin:undefined,left:col==='Q'?thin:undefined,right:col==='Y'?thin:undefined})})});
+  const INC='X'+s0,DEC='X'+(s0+1),INCN='U'+s0,DECN='U'+(s0+1);
+  // checks (not printed: column Z area)
+  const ck=s0+4;
+  st(ws.getCell('B'+ck),{font:{bold:true,color:{argb:'FF1F5C4A'}}}).value='ตรวจสอบอัตโนมัติ';
+  st(ws.getCell('B'+(ck+1)),{}).value=F(`IF(ABS(${TOTC}-${VAL})<0.005,"✓ ผลรวมรายการตามสัญญาตรงกับค่าก่อสร้างตามสัญญา","✗ ผลรวมรายการตามสัญญาไม่ตรงกับค่าก่อสร้างตามสัญญา ต่าง "&TEXT(${TOTC}-${VAL},"#,##0.00")&" บาท")`,'');
+  st(ws.getCell('B'+(ck+2)),{}).value=F(`IF(${TOTA}-${VAL}>0.004,"✗ ค่างานหลังถัวจ่ายเกินวงเงินสัญญา "&TEXT(${TOTA}-${VAL},"#,##0.00")&" บาท","✓ ค่างานหลังถัวจ่ายไม่เกินวงเงินสัญญา")`,'');
+  st(ws.getCell('B'+(ck+3)),{}).value=F(`IF(ABS(${TOTC}+${INC}-${DEC}-${TOTA})<0.005,"✓ สัญญา + เพิ่ม − ลด = ค่างานหลังถัวจ่าย","✗ สมการ สัญญา + เพิ่ม − ลด ไม่ตรง")`,'');
+  [1,2,3].forEach(k=>ws.mergeCells(`B${ck+k}:P${ck+k}`));
+  // remark + signatures
+  let r=ck+5;
+  if(String(h.remark||'').trim()){const c=st(ws.getCell('A'+r),{});c.value={richText:[{text:'***หมายเหตุ ',font:{name:FONT,size:14,bold:true,underline:true}},{text:h.remark,font:{name:FONT,size:14}}]};ws.mergeCells(`A${r}:X${r}`);r+=2}
+  const SC=[['B','F'],['H','M'],['N','S'],['T','Y']];
+  const signs=S.sign||[];
+  for(let i=0;i<signs.length;i+=4){r+=1;signs.slice(i,i+4).forEach((sg,j)=>{const [a,b]=SC[j];
+    [[0,'ลงชื่อ..................................................'+sg.role],[1,'('+sg.name+')'],[2,sg.pos]].forEach(([k,t])=>{const c=st(ws.getCell(a+(r+k)),{al:{horizontal:'center'}});c.value=t;ws.mergeCells(`${a}${r+k}:${b}${r+k}`)})});r+=4}
+  setup(ws,'sum',(pset().sets.sum.scale==='fit'));
+  ws.pageSetup.printArea=`A1:Y${r}`;ws.pageSetup.printTitlesRow='6:8';
+
+  /* sheets 3-4: detail */
+  const SS="'บัญชีสรุป'!";
+  const detail=(name,key,sign,word)=>{
+    const wd=wb.addWorksheet(name,{properties:{tabColor:{argb:sign>0?'FF1E7A46':'FFB42318'}}});
+    wd.columns=[{width:6},{width:46},{width:15},{width:9},{width:17},{width:16},{width:8},{width:11},{width:20},{width:7}];
+    const c16=(a,v,o={})=>{const c=st(wd.getCell(a),Object.assign({font:{size:16}},o));c.value=v;return c};
+    const t=[F(`"รายละเอียดแสดงปริมาณงานและค่างานประกอบการถัวจ่าย ครั้งที่ "&${RND}`,'รายละเอียดแสดงปริมาณงานและค่างานประกอบการถัวจ่าย ครั้งที่ '+h.round),
+      F(`${P1}C7&" "&${P1}C8`,h.project+' '+h.loc),F(`"สัญญาเลขที่ "&${P1}C3&" ลงวันที่ "&${P1}C4`,`สัญญาเลขที่ ${h.no} ลงวันที่ ${h.date}`),F(`"โดย "&${P1}C6&" เป็นผู้รับจ้าง"`,`โดย ${h.contractor} เป็นผู้รับจ้าง`)];
+    t.forEach((v,i)=>{c16('A'+(i+1),v,{font:{size:16,bold:true},al:{horizontal:'center',wrapText:true}});wd.mergeCells(`A${i+1}:J${i+1}`)});wd.getRow(2).height=42;
+    const items=S.items.map((it,i)=>({it,i,o:calcItem(it,R)})).filter(x=>x.o.valid&&(sign>0?x.o.d>0.004:x.o.d<-0.004));
+    c16('A6',F(`"รายการที่มีค่างาน${word}ในสัญญา จำนวน "&${SS}${sign>0?INCN:DECN}&" รายการ"`,`รายการที่มีค่างาน${word}ในสัญญา จำนวน ${items.length} รายการ`),{font:{size:16,bold:true}});wd.mergeCells('A6:J6');
+    let r=8;
+    const line=(lab,q,u,w1,p,u2,w2,amt,u3,nf={})=>{const set=(c,v,f,o={})=>{const cc=c16(c+r,v,o);if(f)cc.numFmt=f;return cc};
+      set('B',lab);set('C',q,nf.q||NQ,{al:{horizontal:'right'}});set('D',u);set('E',w1);set('F',p,nf.p||'#,##0.000;-#,##0.000;"-"',{al:{horizontal:'right'}});set('G',u2);set('H',w2);set('I',amt,nf.a||NM,{al:{horizontal:'right'}});set('J',u3);r++};
+    items.forEach(({it,i,o},k)=>{const sr=rowOf[i],U=`${SS}C${sr}`,u=it.unit||'';
+      c16('A'+r,k+1,{font:{size:16,bold:true}});c16('B'+r,'รายการที่ '+(i+1)+'   '+(it.desc||''),{font:{size:16,bold:true}});wd.mergeCells(`B${r}:J${r}`);r++;
+      line('ปริมาณงานตามสัญญา',F(`${SS}E${sr}`,o.c),u,'ๆ ละ',F(`${SS}D${sr}`,o.p),'บาท','เป็นเงิน',F(`${SS}F${sr}`,o.ca),'บาท');
+      if(sign>0){
+        line(F(`"ปริมาณงานขอถัวจ่ายครั้งที่ "&${RND}`,'ปริมาณงานขอถัวจ่ายครั้งที่ '+h.round),F(`${SS}G${sr}`,o.a),u,'ปริมาณเพิ่มขึ้น',F(`${SS}W${sr}`,o.dq),u,'คิดเป็น',F(`${SS}H${sr}`,o.isNew?'ใหม่':o.pct),o.isNew?'':'%',{p:NQ,a:NP});
+        line(F(`"ปริมาณงานไม่เกิน "&${LIM1}&"% จ่าย 100%"`,`ปริมาณงานไม่เกิน ${R.lim1}% จ่าย 100%`),F(`${SS}L${sr}`,o.q1),u,'ๆ ละ',F(`${SS}D${sr}`,o.p),'บาท','เป็นเงิน',F(`${SS}N${sr}`,o.a1),'บาท');
+        line(F(`"ปริมาณงานเกิน "&${LIM1}&"% - "&${LIM2}&"% จ่าย "&${PAY2}&"%"`,`ปริมาณงานเกิน ${R.lim1}% - ${R.lim2}% จ่าย ${R.pay2}%`),F(`${SS}O${sr}`,o.q2),u,'ๆ ละ',F(`${SS}P${sr}`,o.q2?o.p2:0),'บาท','เป็นเงิน',F(`${SS}Q${sr}`,o.a2),'บาท');
+        line(F(`"ปริมาณงานเกิน "&${LIM2}&"% จ่าย "&${PAY3}&"%"`,`ปริมาณงานเกิน ${R.lim2}% จ่าย ${R.pay3}%`),F(`${SS}R${sr}`,o.q3),u,'ๆ ละ',F(`${SS}S${sr}`,o.q3?o.p3:0),'บาท','เป็นเงิน',F(`${SS}T${sr}`,o.a3),'บาท');
+      } else {
+        line(F(`"ปริมาณงานขอถัวจ่ายครั้งที่ "&${RND}`,'ปริมาณงานขอถัวจ่ายครั้งที่ '+h.round),F(`${SS}G${sr}`,o.a),u,'ปริมาณลดลง',F(`-${SS}W${sr}`,-o.dq),u,'คิดเป็น',F(`IF(ISNUMBER(${SS}H${sr}),${SS}H${sr},0)`,o.pct||0),'%',{p:NQ,a:'0.000'});
+        line(F(`"ปริมาณงานขอถัวจ่ายครั้งที่ "&${RND}`,'ปริมาณงานขอถัวจ่ายครั้งที่ '+h.round),F(`${SS}G${sr}`,o.a),u,'ๆ ละ',F(`${SS}D${sr}`,o.p),'บาท','เป็นเงิน',F(`${SS}V${sr}`,o.aa),'บาท');
+      }
+      c16('H'+r,'รวมเป็นเงิน',{font:{size:16,bold:true},al:{horizontal:'right'}});wd.mergeCells(`E${r}:H${r}`);wd.getCell('E'+r).value='รวมเป็นเงิน';wd.getCell('E'+r).font={name:FONT,size:16,bold:true};wd.getCell('E'+r).alignment={horizontal:'right'};
+      c16('I'+r,F(`${SS}V${sr}`,o.aa),{font:{size:16,bold:true},nf:NM,al:{horizontal:'right'},b:{bottom:thin}});c16('J'+r,'บาท',{font:{size:16,bold:true}});r++;
+      wd.mergeCells(`E${r}:H${r}`);c16('E'+r,`ค่างาน${word}สัญญา เป็นเงิน`,{font:{size:16,bold:true},al:{horizontal:'right'}});
+      c16('I'+r,F(sign>0?`${SS}X${sr}`:`-${SS}X${sr}`,Math.abs(o.d)),{font:{size:16,bold:true,color:{argb:'FF1A35C9'}},nf:NM,al:{horizontal:'right'},b:{bottom:{style:'double',color:{argb:'FF000000'}}}});c16('J'+r,'บาท',{font:{size:16,bold:true}});r+=2;
+    });
+    if(!items.length){c16('B'+r,'ไม่มีรายการ');r+=2}
+    c16('A'+r,`ปริมาณงาน${word}สัญญาเนื่องจาก `+(sign>0?h.reasonInc:h.reasonDec));wd.mergeCells(`A${r}:J${r}`);r+=2;
+    const tot=sign>0?INC:DEC,cnt=sign>0?INCN:DECN,res=sign>0?q.inc:q.dec;
+    c16('A'+r,F(`"รายการที่มีค่างาน${word}ในสัญญา รวม "&${SS}${cnt}&" รายการ รวมเป็นเงิน "&TEXT(${SS}${tot},"#,##0.00")&" บาท"`,`รายการที่มีค่างาน${word}ในสัญญา รวม ${items.length} รายการ รวมเป็นเงิน ${fm(res)} บาท`),{font:{size:16,bold:true},al:{horizontal:'center'}});wd.mergeCells(`A${r}:J${r}`);r++;
+    c16('A'+r,F(`"- "&BAHTTEXT(${SS}${tot})&" -"`,'- '+bahtText(res)+' -'),{font:{size:16,bold:true},al:{horizontal:'center'}});wd.mergeCells(`A${r}:J${r}`);r+=4;
+    const ctl=(S.sign||[]).find(s=>String(s.role).trim()==='ผู้ควบคุมงาน')||(S.sign||[])[0];
+    if(ctl)[['ลงชื่อ..................................................'+ctl.role],['('+ctl.name+')'],[ctl.pos]].forEach(([t])=>{c16('E'+r,t,{al:{horizontal:'center'}});wd.mergeCells(`E${r}:J${r}`);r++});
+    for(let i=1;i<r;i++)if(!wd.getRow(i).height)wd.getRow(i).height=22;
+    setup(wd,key,false);wd.pageSetup.printArea=`A1:J${r}`;
+  };
+  detail('รายการเพิ่ม','inc',1,'มากกว่า');
+  detail('รายการลด','dec',-1,'น้อยกว่า');
+  wb.views=[{activeTab:1}];
+  const buf=await wb.xlsx.writeBuffer();
+  const ab=buf instanceof ArrayBuffer?buf:buf.buffer.slice(buf.byteOffset,buf.byteOffset+buf.byteLength);
+  saveFile(`ถัวจ่าย_${fileTag(S)}.xlsx`,ab,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  }catch(e){console.error(e);toast('สร้างไฟล์ Excel ไม่สำเร็จ: '+(e&&e.message||e))}
+  finally{btn.disabled=false;btn.textContent=old}
+}
+$('bXlsx').addEventListener('click',exportXlsx);
+loadDB();
+if(DB.cur&&curProj())openProject(DB.cur);else showHome();
+})();
+</script>
+
+<div id="lockScreen" class="lock" role="dialog" aria-modal="true" aria-labelledby="lkTitle">
+  <div class="lk-road" aria-hidden="true"></div>
+  <form class="lk-card" id="lkForm" autocomplete="off">
+    <div class="lk-mark" aria-hidden="true"><span>NW</span></div>
+    <div class="lk-eyebrow">Construction Pay Balancing System</div>
+    <h1 id="lkTitle">ระบบคำนวณถัวจ่าย</h1>
+    <p class="lk-sub">ใส่รหัสเพื่อเปิดใช้งานโปรแกรมบนเครื่องนี้</p>
+    <label class="lk-lbl" for="lkCode">รหัสเปิดใช้งาน</label>
+    <input id="lkCode" type="password" inputmode="numeric" autocomplete="off" maxlength="32" required>
+    <div class="lk-err" id="lkErr" role="alert"></div>
+    <button type="submit" class="lk-btn">เปิดใช้งาน</button>
+    <div class="lk-note">ใส่รหัสครั้งเดียวต่อเครื่อง · ติดต่อผู้พัฒนาหากไม่ทราบรหัส</div>
+    <div class="lk-credit">Concept &amp; Development by Miss Narama Woraklan · Krabi Highway District</div>
+  </form>
+</div>
+<style>
+html.locked body{overflow:hidden}
+html.locked .wrap{visibility:hidden}
+.lock{position:fixed;inset:0;z-index:1000;background:#103b30;color:#f4f7f5;display:grid;place-items:center;overflow:auto;
+  padding:max(24px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(24px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));
+  background-image:radial-gradient(rgba(255,255,255,.07) 1px,transparent 1.2px);background-size:7px 7px;font-family:"Sarabun",system-ui,sans-serif}
+.lock[hidden]{display:none!important}
+.lk-road{position:fixed;left:0;right:0;bottom:calc(28px + env(safe-area-inset-bottom,0px));height:10px;background:repeating-linear-gradient(90deg,#f2c230 0 46px,transparent 46px 74px);animation:road 2.4s linear 1}
+.lk-card{width:min(420px,100%);display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;margin-bottom:40px}
+.lk-mark{width:96px;height:96px;border-radius:50%;display:grid;place-items:center;background:#174d3f;box-shadow:0 0 0 3px #f2c230,0 0 0 9px #103b30,0 0 0 10px rgba(242,194,48,.45);margin-bottom:12px}
+.lk-mark span{font-family:"Bai Jamjuree","Sarabun",sans-serif;font-weight:700;font-size:2.2rem;color:#f2c230;letter-spacing:.04em}
+.lk-eyebrow{font-size:.74rem;text-transform:uppercase;letter-spacing:.22em;color:#f2c230;font-weight:600}
+.lock h1{font-family:"Bai Jamjuree","Sarabun",sans-serif;font-size:clamp(1.9rem,7vw,2.6rem);margin:0;color:#fff;line-height:1.15}
+.lk-sub{margin:0 0 14px;color:#c9dbd4}
+.lk-lbl{align-self:flex-start;font-size:.85rem;color:#c9dbd4}
+.lock input{width:100%;font:inherit;font-size:1.5rem;letter-spacing:.4em;text-align:center;padding:10px 12px;border-radius:10px;border:2px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff}
+.lock input:focus{outline:none;border-color:#f2c230}
+.lock input.bad{border-color:#ff8a80;animation:shake .3s}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.lk-err{min-height:1.4em;color:#ffb4ab;font-size:.9rem}
+.lk-btn{width:100%;font:inherit;font-weight:700;font-size:1.05rem;padding:12px;border-radius:10px;border:0;background:#f2c230;color:#103b30;cursor:pointer}
+.lk-btn:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.lk-note{font-size:.8rem;color:#a9c4ba;margin-top:6px}
+.lk-credit{margin-top:22px;font-size:.72rem;color:#8fb0a4;line-height:1.6}
+@media (prefers-reduced-motion:reduce){.lk-road,.lock input.bad{animation:none}}
+</style>
+<script>
+(function(){
+  var HASH='ecf15cdf904ee62e3db43b0ffc8cedf0a411bb699bd8cfaea97548dfe851297b',SALT='thuajai·krabi',KEYA='thuajai-activation';
+  var el=document.getElementById('lockScreen'),inp=document.getElementById('lkCode'),err=document.getElementById('lkErr');
+  function ok(){try{return localStorage.getItem(KEYA)===HASH}catch(e){return false}}
+  function unlock(){el.hidden=true;document.documentElement.classList.remove('locked')}
+  if(ok()){unlock();return}
+  document.documentElement.classList.add('locked');setTimeout(function(){inp.focus()},50);
+  var tries=0;
+  function sha(t){return crypto.subtle.digest('SHA-256',new TextEncoder().encode(t)).then(function(b){return Array.from(new Uint8Array(b)).map(function(x){return x.toString(16).padStart(2,'0')}).join('')})}
+  document.getElementById('lkForm').addEventListener('submit',function(e){e.preventDefault();
+    if(!(window.crypto&&crypto.subtle)){err.textContent='เปิดโปรแกรมผ่านลิงก์ https เท่านั้น';return}
+    sha(SALT+inp.value.trim()).then(function(h){
+      if(h===HASH){try{localStorage.setItem(KEYA,HASH)}catch(x){}unlock();return}
+      tries++;inp.classList.remove('bad');void inp.offsetWidth;inp.classList.add('bad');inp.value='';
+      err.textContent=tries>=3?'รหัสไม่ถูกต้อง ('+tries+' ครั้ง) · ติดต่อผู้พัฒนาเพื่อขอรหัส':'รหัสไม่ถูกต้อง ลองใหม่อีกครั้ง';inp.focus()})});
+})();
+</script>
+
+<script>
+if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost')){window.addEventListener('load',function(){navigator.serviceWorker.register('./sw.js').catch(function(){})})}
+</script>
+</body>
+</html>
