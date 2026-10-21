@@ -135,8 +135,12 @@ tfoot td{font-weight:700;background:var(--sunk)}
 .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line)}
 .projv{display:flex;flex-direction:column;gap:18px}
 .ttl{display:flex;flex-direction:column;gap:2px;min-width:0}
-.crumb{align-self:flex-start;border:0;background:none;color:var(--accent);padding:0;font-weight:600;margin-bottom:4px}
-.crumb:hover{text-decoration:underline}
+.crumb{align-self:flex-start;display:inline-flex;align-items:center;gap:8px;margin-bottom:10px;
+  padding:9px 18px 9px 12px;border-radius:999px;border:1.5px solid var(--accent);background:var(--accent-soft);color:var(--accent);
+  font-family:var(--display);font-weight:700;font-size:1rem;cursor:pointer;transition:background .15s,color .15s}
+.crumb .ar{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--surface);font-size:.95rem;line-height:1}
+.crumb:hover{background:var(--accent);color:var(--surface)}
+.crumb:hover .ar{background:var(--surface);color:var(--accent)}
 .home{display:flex;flex-direction:column;gap:16px}
 .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
 @media (max-width:860px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -263,7 +267,7 @@ select{font:inherit;font-size:.92rem;color:var(--fg);background:var(--bg);border
 <div class="wrap">
   <header class="top">
     <div class="ttl">
-      <button type="button" id="bHome" class="crumb" hidden>← หน้าสรุปโครงการ</button>
+      <button type="button" id="bHome" class="crumb" hidden><span class="ar" aria-hidden="true">←</span>กลับหน้าสรุปโครงการ</button>
       <h1 id="hTitle">ระบบคำนวณถัวจ่าย</h1>
       <div class="eyebrow home-only">Construction Pay Balancing System</div>
       <div class="sub" id="hSub">บัญชีสรุปปริมาณงานและค่างานก่อสร้าง · คำนวณ ตรวจความถูกต้อง และพิมพ์เอกสารถัวจ่าย</div>
